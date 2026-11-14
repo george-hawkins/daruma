@@ -1,0 +1,17 @@
+# Only for the end-to-end tests in e2e/ (the app itself has no build step and
+# no dependencies). Run them with: uv run pytest
+[project]
+name = "daruma-e2e"
+version = "0"
+requires-python = ">=3.12"
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-playwright>=0.7"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["e2e"]
+# Use the installed Google Chrome rather than downloading Playwright's browsers.
+addopts = "--browser-channel chrome"

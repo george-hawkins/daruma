@@ -137,6 +137,14 @@ export const mergeSections3 = (base, local, remote) => ({
 
 export const upgradeSections = (doc) => doc && { ...doc, ...Object.fromEntries(SECTION_KEYS.map((k) => [k, upgradeItems(doc[k])])) };
 
+// Where `item` is in `list` now: the list may have been re-rendered or
+// replaced (e.g. by a sync) since `item` was picked, say while a menu was
+// open. Found by identity, else by text; -1 if it's gone.
+export function locate(list, item) {
+  const i = list.indexOf(item);
+  return i >= 0 ? i : list.findIndex((it) => it.text === item.text);
+}
+
 // Whether item i of a list is the last of its group (and not of the list),
 // for the darker rule between groups.
 export const endsGroup = (items, i) => i < items.length - 1 && items[i].time !== items[i + 1].time;

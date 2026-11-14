@@ -39,9 +39,15 @@ function openDialog(build, className = '') {
     dlg.onclose = () => resolve(value);
     // Close on a backdrop tap, but only one that started on the backdrop: the
     // finger lifting at the end of the long-press that opened us doesn't count.
+    // (Block bodies: an on… handler that returns false cancels the event,
+    // which would stop e.g. the Save button submitting its form.)
     let downOnBackdrop = false;
-    dlg.onpointerdown = (e) => (downOnBackdrop = e.target === dlg);
-    dlg.onclick = (e) => e.target === dlg && downOnBackdrop && dlg.close();
+    dlg.onpointerdown = (e) => {
+      downOnBackdrop = e.target === dlg;
+    };
+    dlg.onclick = (e) => {
+      if (e.target === dlg && downOnBackdrop) dlg.close();
+    };
     dlg.showModal();
     dlg.scrollTop = 0; // showModal focuses the first button, which may be at the bottom
   });

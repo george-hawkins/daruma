@@ -12,11 +12,11 @@ import { initSettings } from './settings.js';
 import { notify, showHelp } from './ui.js';
 
 const kanjiDoc = new SyncedDoc('kanji', {
-  urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3, upgrade: upgradeList,
+  urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3, format: 2, upgrade: upgradeList,
   count: (d) => d.items.length,
 });
 const correctionsDoc = new SyncedDoc('corrections', {
-  urlKey: 'correctionsUrl', empty: emptySections, parse: parseSections, serialize: serializeSections, merge3: mergeSections3, upgrade: upgradeSections,
+  urlKey: 'correctionsUrl', empty: emptySections, parse: parseSections, serialize: serializeSections, merge3: mergeSections3, format: 2, upgrade: upgradeSections,
   count: (d) => d.corrections.length + d.maybe.length + d.done.length,
 });
 

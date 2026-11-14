@@ -2,7 +2,7 @@
 
 import { load, save } from './store.js';
 import { el, gestures, menu, promptText, debounce } from './ui.js';
-import { newItem, endsGroup } from './markdown.js';
+import { newItem, endsGroup, locate } from './markdown.js';
 
 // Brush diameter as a fraction of the drawing area's shorter side.
 const BRUSH = 0.035;
@@ -25,15 +25,21 @@ export function initKanji(doc) {
     }));
   }
 
+  // The list may change while a dialog is open, so the item is looked up
+  // again afterwards rather than trusting its index.
   async function itemMenu(i) {
-    const text = doc.data.items[i].text;
+    const item = doc.data.items[i];
+    const text = item.text;
     const choice = await menu(text, [['Edit', 'edit'], ['Delete', 'delete', 'danger'], ['Cancel', null]]);
     if (choice === 'delete') {
-      doc.data.items.splice(i, 1);
+      const j = locate(doc.data.items, item);
+      if (j < 0) return;
+      doc.data.items.splice(j, 1);
     } else if (choice === 'edit') {
       const edited = (await promptText('Edit', text))?.trim();
-      if (!edited || edited === text) return;
-      doc.data.items[i].text = edited; // stays in its group
+      const j = locate(doc.data.items, item);
+      if (!edited || edited === text || j < 0) return;
+      doc.data.items[j].text = edited; // stays in its group
     } else {
       return;
     }

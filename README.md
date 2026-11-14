@@ -88,19 +88,27 @@ Entries are grouped under UTC timestamps, newest first. A new group starts when 
 
 ## Development
 
-Plain HTML, CSS and JavaScript modules: no framework, no dependencies, no build step. To run it locally, serve the repo root with any static server and open it in a browser:
+Plain HTML, CSS and JavaScript modules: no framework, no dependencies, no build step. (The only dependencies are for the end-to-end tests, below.) To run it locally, serve the repo root with any static server and open it in a browser:
 
 ```
-$ python3 -m http.server 8000
+$ uv run python -m http.server 8000
 ```
 
 Then open http://localhost:8000/. Service workers work on `localhost` without HTTPS.
 
-The sync merge logic and the RTK parsing and search have unit tests (no dependencies; Node 20 or later):
+There are two sets of tests. Run both before committing.
 
-```
-$ node --test
-```
+- **Unit tests** for the pure logic (Markdown files, merging, timestamp groups, RTK parsing and search), with Node's built-in test runner (Node 20 or later, no dependencies):
+
+  ```
+  $ node --test
+  ```
+
+- **End-to-end tests** in `e2e/`, with pytest and Playwright run by [uv](https://docs.astral.sh/uv/). They drive the real app in your installed Google Chrome against a fake GitHub API, covering the activities, syncing and the RTK page. `uv` installs the dependencies on the first run:
+
+  ```
+  $ uv run pytest
+  ```
 
 Layout:
 
@@ -113,7 +121,9 @@ Layout:
 | `js/kanjivg-animate.js`, `kanjivg/` | Stroke-order animation and the KanjiVG drawings of the 2200 RTK kanji |
 | `fonts/` | Klee One, used for Japanese text on the RTK page |
 | `js/sync.js` | Local-first documents and GitHub sync |
-| `js/merge.js`, `test/` | Three-way merge of list items, and the tests (merge and RTK search) |
+| `js/merge.js` | Three-way merge of list items |
+| `test/` | Unit tests (`node --test`) |
+| `e2e/`, `pyproject.toml` | End-to-end tests (`uv run pytest`): `conftest.py` has the fake GitHub and helpers, `fixtures/` small RTK files |
 | `js/github.js` | Minimal GitHub Contents API client |
 | `js/markdown.js` | Markdown ⇄ data conversion |
 | `js/settings.js`, `js/store.js`, `js/ui.js` | Settings page, localStorage, shared UI helpers |

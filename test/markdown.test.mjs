@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseList, serializeList, parseSections, serializeSections, mergeList3, mergeSections3,
-  upgradeList, upgradeSections, newItem, timestamp, endsGroup, emptyList, emptySections, GROUP_GAP,
+  upgradeList, upgradeSections, newItem, timestamp, endsGroup, locate, emptyList, emptySections, GROUP_GAP,
 } from '../js/markdown.js';
 
 const T1 = '2026-11-14T12:00:00Z';
@@ -125,4 +125,13 @@ test('upgrade: plain strings from older versions become untimed items', () => {
   const s = upgradeSections({ ...emptySections(), done: ['d'] });
   assert.deepEqual(s.done, [{ text: 'd', time: '' }]);
   assert.deepEqual(upgradeList(upgradeList({ header: '# F', items: ['a'] })).items, [{ text: 'a', time: '' }]);
+});
+
+test('locate finds an item again after the list changed, by identity, else by text', () => {
+  const a = { text: 'a', time: T1 }, b = { text: 'b', time: T1 };
+  const list = [a, b];
+  list.unshift({ text: 'new', time: T2 });
+  assert.equal(locate(list, b), 2);
+  assert.equal(locate([{ text: 'b', time: T1 }], b), 0); // replaced by a sync
+  assert.equal(locate([a], b), -1); // gone
 });

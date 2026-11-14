@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 tmp=$(mktemp -d)
-python3 - "$tmp" <<'PY'
+uv run python - "$tmp" <<'PY'
 import sys
 out = sys.argv[1]
 s = open('design/icon.svg').read()

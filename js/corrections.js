@@ -3,7 +3,7 @@
 
 import { load, save } from './store.js';
 import { el, gestures, menu, notify, debounce } from './ui.js';
-import { newItem, endsGroup } from './markdown.js';
+import { newItem, endsGroup, locate } from './markdown.js';
 
 const KEYS = ['corrections', 'maybe'];
 const TITLES = { corrections: 'Corrections', maybe: 'Maybe' };
@@ -105,17 +105,21 @@ export function initCorrections(doc) {
     });
   }
 
+  // The list may change while the menu is open (e.g. a sync), so the item is
+  // looked up again afterwards rather than trusting its index.
   async function rowMenu(key, i) {
     const other = KEYS.find((k) => k !== key);
-    const choice = await menu(items(key)[i].text, [
+    const picked = items(key)[i];
+    const choice = await menu(picked.text, [
       [`Move to ${TITLES[other]}`, 'move'],
       ['Mark done', 'done'],
       ['Delete', 'delete', 'danger'],
       ['Cancel', null],
     ]);
-    if (choice === 'done') return markDone(key, i);
-    if (!choice) return;
-    const [item] = items(key).splice(i, 1);
+    const j = locate(items(key), picked);
+    if (!choice || j < 0) return;
+    if (choice === 'done') return markDone(key, j);
+    const [item] = items(key).splice(j, 1);
     if (choice === 'move') items(other).unshift(newItem(items(other), item.text));
     doc.changed();
     render();

@@ -17,6 +17,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] Multi-instance sync with three-way merge (0.7). Unit tests: `node --test` (in `test/`).
 - [x] RTK lookup page (0.8): read-only keyword index and Anki deck from `anki-decks`, KanjiVG stroke order, Klee One. Unit tests in `test/rtk.test.mjs`; tested in headless Chrome against the real files.
 - [x] Timestamp groups in the files (0.9). Unit tests in `test/markdown.test.mjs`.
+- [x] End-to-end tests (0.9.1): `uv run pytest` (pytest + Playwright, real app in Chrome, fake GitHub). They found two old bugs, now fixed: see *Testing*.
 - [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
 
 ## Requirements (the "what")
@@ -98,7 +99,9 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - The headings aren't shown in the app: the last row of each group has a slightly darker rule (`--rule-strong`).
   - In the app, items are `{ text, time }` (`time` is the group heading, `''` for items above any heading, e.g. added by hand on GitHub). Empty groups don't exist: a heading is written before its group's first item.
   - Merging: `mergeTimed` in `js/merge.js` merges the texts with `merge3` as before, then gives each item a time from a side where it's in the list it ended up in (a known time over none, then this device's), and sorts each list by group, newest first (`''` first), keeping the merged order within a group.
-  - Data saved on the device by older versions (items as plain strings) is upgraded on load (`upgrade` option of `SyncedDoc`); such items have no time until the next sync takes it from GitHub.
+  - Data saved on the device by older versions (items as plain strings) is upgraded on load (`upgrade` option of `SyncedDoc`).
+  - Each doc's state records its data `format` (2 since 0.9.1). Data saved in an older format also forgets its `sha` and `base`, so the next sync re-reads the file from GitHub and parses it afresh (taking it, or a union merge if there are local changes). This is needed because an older version may have synced the new file format and misread it. It happened with 0.9.0: an 0.8 instance synced the reformatted `forgotten.md` and took the `###` heading for part of the `#` title. 0.9.0 trusted that already-synced data, so the next entry got a new group and was written below the old heading.
+  - **Deploy order:** when the file format changes, push the app first, wait until GitHub Pages serves the new `js/version.js`, and only then change the files.
   - The existing files in `daruma-filestore` were rewritten by hand with `2026-11-14T12:00:00Z` for all existing entries.
 
 ### Navigation
@@ -134,6 +137,19 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - **KanjiVG:** `kanjivg/` holds the 2200 SVGs for the RTK kanji from `kanjivg-20260714-main.zip`, named by zero-padded hex code point (`04e00.svg`), as KanjiVG ships them. `kanjivgAnimate({ root, basePath: 'kanjivg', filenameFormat: 'hex', filenamePrefix: '' })` is called on the card; tapping the drawing replays it. If an SVG is missing, the character is shown in Klee One. KanjiVG is CC BY-SA 3.0, credited in Settings → About.
 - **Klee One** SemiBold (`fonts/KleeOne-SemiBold.woff2`, 2.9 MB, OFL) is declared with a `unicode-range` for kana and kanji only, so Latin text stays in the system font (as in George's Ghostty setup). The font and SVGs aren't in the service worker's `SHELL`; they're cached on first use. Subsetting the font (e.g. `pyftsubset`) to the characters in use would cut it to a few hundred KB if the first load is ever a problem.
 - Three tabs only just fit at 412 px; below 400 px the tab and icon padding shrinks.
+
+### Testing
+- **Keep the tests in step with the app.** Every change in behaviour comes with new or updated tests, and every bug fix with a test that fails without the fix. Run both suites before every commit; both must pass.
+- **Unit tests** (`test/*.test.mjs`, `node --test`, no dependencies) cover the pure modules: `markdown.js` (file formats, timestamp groups, the 6-hour rule), `merge.js`, `rtkdata.js`. Put logic that can be tested without a browser in such modules and test it here.
+- **End-to-end tests** (`e2e/`, `uv run pytest`): pytest + Playwright drive the real app, served from the repo root, in the installed Google Chrome (`--browser-channel chrome`, so no browser download) at phone size, with the service worker blocked.
+  - `e2e/conftest.py`: `FakeGitHub` (contents API as JSON and raw with ETags and 304s, blobs by sha, writes rejected with 409/422 on a stale sha, a `before_next_put` hook to simulate another device pushing first, a request log); the `files` fixture (empty notes files plus `e2e/fixtures/` RTK files); `App` helpers (`open` seeds localStorage, installs a fake clock at `T0` = 2026-11-14T12:00Z and waits for the first sync; `sync` taps the cloud; `advance` moves the clock; `menu` long-presses a row and picks an item).
+  - Assert on what matters to George: the exact text of the files pushed to GitHub, and what the app shows.
+  - Use the fake clock for anything time-based (6-hour groups, RTK checks, the 60 s push delay) rather than waiting.
+  - Old local-data formats are tested by seeding localStorage with what that version saved (`test_sync.py`).
+  - `test_lists.py`: groups, the darker rule, edit/delete/done/undo/move, Enter for a new row, menus while a sync changes the list. `test_sync.py`: pull, merge, 409 retry, file creation, persistence across reloads, the 60 s push, data saved by older versions. `test_rtk.py`: search, groups, card contents, back button and gesture, check frequency and ETags, offline, settings.
+- Bugs the end-to-end tests found when they were written (0.9.1):
+  - The Kanji page's *Edit* never saved: `ui.js` set `dlg.onclick = (e) => cond && dlg.close()`, and an `on…` handler that returns `false` cancels the event, so the *Save* click never submitted the form. Use block bodies for `on…` handlers.
+  - Menus acted on the row at the index the row had when the menu opened, so a sync re-rendering the list while a menu was open (or fast typing) could move, delete or mark done the wrong entry. Items are now located again after any `await` (`locate()` in `markdown.js`).
 
 ### Updates without losing state
 - `sw.js` is network-first (3 s timeout, then the cache). When online, the latest deployed version is always used, so there's no cache version number to bump on deploy. Offline, the cached copy is used.
