@@ -9,7 +9,7 @@ import { initCorrections } from './corrections.js';
 import { initRtk } from './rtk.js';
 import { RtkSource } from './rtksource.js';
 import { initSettings } from './settings.js';
-import { notify, showHelp } from './ui.js';
+import { notify, showHelp, hashFor, parseHash } from './ui.js';
 
 const kanjiDoc = new SyncedDoc('kanji', {
   urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3, format: 2, upgrade: upgradeList,
@@ -61,15 +61,30 @@ const pages = {
   settings: initSettings(syncer),
 };
 
-function show(name) {
+// The URL hash says what's shown (#kanji, #corrections, #settings, #rtk, or
+// #rtk/可 for a card), so a refresh or a bookmark comes back to it. Without a
+// hash (e.g. opened from the home screen) the last page shown is used.
+// Switching tabs replaces the hash rather than adding history entries; the
+// RTK page pushes one when a card is opened, so the back gesture closes it.
+// `arg` is what's shown on the page (an RTK card); by default whatever the
+// page is showing already.
+function show(name, arg = pages[name]?.current?.() ?? '') {
   if (!pages[name]) name = 'kanji';
   for (const p of Object.keys(pages)) document.getElementById(`page-${p}`).classList.toggle('active', p === name);
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.page === name);
   save('page', name);
-  pages[name].onShow?.();
+  pages[name].onShow?.(arg);
+  const hash = hashFor(name, pages[name].current?.() ?? '');
+  if (location.hash !== hash) history.replaceState(history.state, '', hash);
 }
+const route = () => {
+  const { page, arg } = parseHash();
+  if (pages[page]) show(page, arg);
+  return Boolean(pages[page]);
+};
 for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => show(t.dataset.page));
-show(load('page', 'kanji'));
+window.addEventListener('popstate', route); // back/forward, or a hash typed in
+if (!route()) show(load('page', 'kanji'));
 
 navigator.storage?.persist?.();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

@@ -1,5 +1,17 @@
 // Small shared UI helpers: snackbar, dialogs and row gestures.
 
+// The URL hash for a page and, optionally, something on it: #rtk, #rtk/可.
+export const hashFor = (page, arg = '') => `#${page}${arg ? `/${encodeURIComponent(arg)}` : ''}`;
+
+export function parseHash(hash = location.hash) {
+  let text = hash.slice(1);
+  try {
+    text = decodeURIComponent(text);
+  } catch { /* leave as is */ }
+  const [page, ...rest] = text.split('/');
+  return { page, arg: rest.join('/') };
+}
+
 export function el(tag, className, text) {
   const e = document.createElement(tag);
   if (className) e.className = className;

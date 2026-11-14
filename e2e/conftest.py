@@ -154,9 +154,10 @@ class App:
         self.page = page
         self.base_url = base_url
 
-    def open(self, *, settings=None, storage=None, page="kanji", clock=T0):
+    def open(self, *, settings=None, storage=None, page="kanji", clock=T0, hash=""):
         """Seeds localStorage (keys without the "daruma:" prefix) and opens the
-        app, with its clock starting at `clock`, then waits for the first sync."""
+        app (at URL `hash`, e.g. "#rtk/可"), with its clock starting at `clock`,
+        then waits for the first sync."""
         if clock is not None:
             self.page.clock.install(time=clock)
         self.page.goto(f"{self.base_url}/e2e-blank")  # any same-origin page
@@ -165,7 +166,7 @@ class App:
             "items => { localStorage.clear(); for (const [k, v] of Object.entries(items)) localStorage.setItem('daruma:' + k, JSON.stringify(v)); }",
             items,
         )
-        self.page.goto(f"{self.base_url}/")
+        self.page.goto(f"{self.base_url}/{hash}")
         self.wait_synced()
         return self
 
@@ -178,6 +179,18 @@ class App:
         """Taps the cloud (a forced sync) and waits for it to finish."""
         self.page.click("#sync-status")
         self.wait_synced()
+
+    def hash(self) -> str:
+        """The URL's hash, decoded."""
+        return self.page.evaluate("decodeURIComponent(location.hash)")
+
+    def shown(self) -> str:
+        """The page shown, plus the open RTK card's frame if any: "rtk Frame 97"."""
+        return self.page.evaluate("""() => {
+          const page = document.querySelector('.page.active').id.replace('page-', '');
+          const card = document.getElementById('page-rtk').classList.contains('card-open');
+          return page === 'rtk' && card ? `rtk ${document.getElementById('rtk-card-frame').textContent}` : page;
+        }""")
 
     def tab(self, name: str):
         self.page.click(f".tab[data-page={name}]")

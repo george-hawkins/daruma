@@ -30,6 +30,7 @@ The ? button in the top bar shows a summary of the gestures below.
 
 - Matches in the index come first. Below them, on pale gold, come cards that mention what you typed in any field.
 - Tap a row to see the back of its card. Tap the kanji to watch it drawn stroke by stroke. **Results**, or the back gesture, returns to the list.
+- The address shows the card (e.g. `…/daruma/#rtk/可`), so refreshing keeps it open, and you can bookmark or share a link straight to a kanji's card.
 - The files are kept on the device. They're checked for changes when you tap the sync icon, and otherwise every 6 hours.
 
 ## Setup

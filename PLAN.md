@@ -18,6 +18,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] RTK lookup page (0.8): read-only keyword index and Anki deck from `anki-decks`, KanjiVG stroke order, Klee One. Unit tests in `test/rtk.test.mjs`; tested in headless Chrome against the real files.
 - [x] Timestamp groups in the files (0.9). Unit tests in `test/markdown.test.mjs`.
 - [x] End-to-end tests (0.9.1): `uv run pytest` (pytest + Playwright, real app in Chrome, fake GitHub). They found two old bugs, now fixed: see *Testing*.
+- [x] Page and RTK card in the URL (0.9.2): `#rtk/可` survives a refresh and can be bookmarked.
 - [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
 
 ## Requirements (the "what")
@@ -107,6 +108,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 ### Navigation
 - A top bar with tabs **Kanji | Corrections**, the sync indicator, and ⚙ for Settings. There's no hamburger menu until there's more to put in it.
 - Navigation stays at the top (not bottom navigation) so it isn't hit while drawing. The last page shown is remembered.
+- **URL** (0.9.2): the hash says what's shown: `#kanji`, `#corrections`, `#settings`, `#rtk`, or `#rtk/可` for an open card. So a refresh comes back to an open card (before, only the tab and the search survived), and a card can be bookmarked or linked to. Without a hash (e.g. opened from the home screen) the last page shown (`daruma:page`) is used. Switching tabs replaces the hash (no history entries, so Back doesn't step through tabs); the hash keeps an open card when you switch away and back. Routing is in `app.js` (`show(page, arg)`, `popstate`); pages can take an `arg` in `onShow(arg)` and report it with `current()`. Helpers: `hashFor` and `parseHash` in `ui.js`.
 
 ### Forgotten kanji
 - Left third: an add box at the top (Enter adds the entry at the top; focus stays in the box for the next word), with the list below it. Long-press an entry → Edit / Delete.
@@ -133,7 +135,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - The CSV and the deck are joined on the kanji only. Cards whose kanji is already in the CSV group are left out of the deck group (they'd be the same row).
 - **Results:** two groups, CSV first, each in file order. The deck group ("Also found in cards") is on pale gold paper with a gold margin.
 - **Card:** George's back template (`<span class="kanjivg-animate">{{Kanji}}</span>`, keyword, story, `Note: …` if present), plus `Update: …` styled like the note, so the deck's optional sixth field isn't lost. Inline Markdown: `**bold**`, `_italic_`, `*italic*` (also inside a word: `*gold*fish`), code, links and hard newlines. A kanji with no card yet shows just the drawing and keyword. Styling follows `rtk-mockup.html` (20 px, line-height 1.5, centered, 8em drawing, uppercase bold keyword), without night mode or the mock frame.
-- **Back to the results:** a "‹ Results" bar on the card, and opening a card pushes a history entry so Android's back gesture returns to the list (and doesn't leave the app). The card is an overlay, so the list keeps its scroll position.
+- **Back to the results:** a "‹ Results" bar on the card, and opening a card pushes a history entry (`#rtk/可`) so Android's back gesture returns to the list (and doesn't leave the app). The card is an overlay, so the list keeps its scroll position. A card shown from the URL (refresh, bookmark, back/forward) doesn't push an entry; if there's no results entry to go back to, "‹ Results" just shows the results. A link to a card before the RTK files are on the device opens it once they've been fetched; a link to a kanji that isn't in them searches for it instead.
 - **KanjiVG:** `kanjivg/` holds the 2200 SVGs for the RTK kanji from `kanjivg-20260714-main.zip`, named by zero-padded hex code point (`04e00.svg`), as KanjiVG ships them. `kanjivgAnimate({ root, basePath: 'kanjivg', filenameFormat: 'hex', filenamePrefix: '' })` is called on the card; tapping the drawing replays it. If an SVG is missing, the character is shown in Klee One. KanjiVG is CC BY-SA 3.0, credited in Settings → About.
 - **Klee One** SemiBold (`fonts/KleeOne-SemiBold.woff2`, 2.9 MB, OFL) is declared with a `unicode-range` for kana and kanji only, so Latin text stays in the system font (as in George's Ghostty setup). The font and SVGs aren't in the service worker's `SHELL`; they're cached on first use. Subsetting the font (e.g. `pyftsubset`) to the characters in use would cut it to a few hundred KB if the first load is ever a problem.
 - Three tabs only just fit at 412 px; below 400 px the tab and icon padding shrinks.

@@ -87,7 +87,7 @@ def test_back_to_the_results_with_the_button_or_the_back_gesture(app, files):
     app.page.locator("tr.hit", has_text="缶").click()
     app.page.go_back()  # Android's back gesture
     app.page.wait_for_function("!document.getElementById('page-rtk').classList.contains('card-open')")
-    assert app.page.url == f"{app.base_url}/"  # still in the app
+    assert app.page.url == f"{app.base_url}/#rtk"  # still in the app, on the results
     assert app.page.input_value("#rtk-query") == "can"
 
 
@@ -138,3 +138,80 @@ def test_settings_test_the_read_only_files_without_a_token(app, files):
     app.page.click("#settings-form button[type=submit]")
     app.page.wait_for_function("document.getElementById('set-result').textContent.includes('RTK keywords: ✗')")
     assert 'rtk1-keywords.csv not found on branch "master"' in app.page.inner_text("#set-result")
+
+
+# The URL: #kanji, #corrections, #settings, #rtk, #rtk/可.
+
+
+def open_card(app, query, kanji):
+    search(app, query)
+    app.page.locator("tr.hit", has_text=kanji).click()
+
+
+def test_an_open_card_is_in_the_url_and_survives_a_refresh(app, files):
+    open_rtk(app)
+    assert app.hash() == "#rtk"
+    open_card(app, "can", "可")
+    assert app.hash() == "#rtk/可"
+    app.page.reload()
+    app.wait_synced()
+    assert app.shown() == "rtk Frame 97"
+    app.page.go_back()  # the back gesture still returns to the results
+    app.page.wait_for_function("!document.getElementById('page-rtk').classList.contains('card-open')")
+    assert app.hash() == "#rtk"
+    assert results(app) == {"index": [["97", "可", "can"], ["2116", "缶", "tin can"]]}
+
+
+def test_a_link_to_a_card_opens_it_even_on_a_first_visit(app, files):
+    # Nothing on the device yet: the card is shown once the RTK files arrive.
+    app.open(page="kanji", hash="#rtk/%E5%8F%AF")
+    app.page.wait_for_function("document.getElementById('page-rtk').classList.contains('card-open')")
+    assert app.shown() == "rtk Frame 97"
+    history = app.page.evaluate("history.length")
+    # There's no results entry to go back to: the button shows them anyway,
+    # without leaving the app.
+    app.page.click("#rtk-back")
+    assert app.shown() == "rtk"
+    assert app.hash() == "#rtk"
+    assert app.page.evaluate("history.length") == history
+
+
+def test_a_link_to_an_unknown_kanji_searches_for_it(app, files):
+    app.open(hash="#rtk/鬼")
+    app.page.wait_for_function("document.getElementById('rtk-results').textContent.includes('Nothing found')")
+    assert app.shown() == "rtk"
+    assert app.hash() == "#rtk"
+    assert app.page.input_value("#rtk-query") == "鬼"
+
+
+def test_tabs_are_in_the_url_without_adding_history_entries(app, files):
+    app.open(page="kanji")
+    assert app.hash() == "#kanji"
+    history = app.page.evaluate("history.length")
+    for name in ["corrections", "settings", "rtk", "kanji"]:
+        app.tab(name)
+        assert app.hash() == f"#{name}" and app.shown() == name
+    assert app.page.evaluate("history.length") == history
+    # The URL wins over the page remembered on the device.
+    app.page.goto(f"{app.base_url}/#corrections")
+    app.wait_synced()
+    assert app.shown() == "corrections"
+
+
+def test_switching_tabs_keeps_an_open_card(app, files):
+    open_rtk(app)
+    open_card(app, "can", "可")
+    app.tab("kanji")
+    assert app.hash() == "#kanji"
+    app.tab("rtk")
+    assert app.hash() == "#rtk/可"
+    assert app.shown() == "rtk Frame 97"
+    app.page.click("#rtk-back")
+    app.page.wait_for_function("!document.getElementById('page-rtk').classList.contains('card-open')")
+    assert app.hash() == "#rtk"
+
+
+def test_without_a_hash_the_last_page_is_shown(app, files):
+    app.open(page="corrections")
+    assert app.shown() == "corrections"
+    assert app.hash() == "#corrections"

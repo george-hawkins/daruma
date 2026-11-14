@@ -2,7 +2,7 @@
 // kanji or keyword, then open a match as the back of its Anki card.
 
 import { load, save } from './store.js';
-import { el, debounce } from './ui.js';
+import { el, debounce, hashFor } from './ui.js';
 import { search, cardFor, renderInline } from './rtkdata.js';
 import { getSettings } from './settings.js';
 
@@ -94,15 +94,20 @@ export function initRtk(source) {
     if (!window.kanjivgAnimate) k.classList.add('no-svg');
   }
 
-  // Opening a card adds a history entry, so the phone's back gesture returns
-  // to the results rather than leaving the app.
-  function openCard(kanji) {
+  // Opening a card from the results adds a history entry (#rtk/可), so the
+  // phone's back gesture returns to the results rather than leaving the app.
+  // A card shown because of the URL (a refresh, a bookmark, back/forward)
+  // doesn't add one.
+  function openCard(kanji, { push = true } = {}) {
     open = kanji;
     showCard(kanji);
     page.classList.add('card-open');
     cardView.scrollTop = 0;
-    if (history.state?.rtkCard) history.replaceState({ rtkCard: true }, '');
-    else history.pushState({ rtkCard: true }, '');
+    if (push) {
+      const hash = hashFor('rtk', kanji);
+      if (history.state?.rtkCard) history.replaceState({ rtkCard: true }, '', hash);
+      else history.pushState({ rtkCard: true }, '', hash);
+    }
     $('rtk-back').focus({ preventScroll: true });
   }
 
@@ -111,9 +116,34 @@ export function initRtk(source) {
     page.classList.remove('card-open');
   }
 
-  $('rtk-back').addEventListener('click', () => (history.state?.rtkCard ? history.back() : closeCard()));
-  window.addEventListener('popstate', () => open && closeCard());
-  if (history.state?.rtkCard) history.replaceState(null, ''); // reloaded with a card open
+  // The card named in the URL. Until the RTK files are on this device it's
+  // kept as `pending`, and shown when they arrive. A kanji that isn't in them
+  // is searched for instead (showing "Nothing found").
+  let pending = null;
+  function showLinked(kanji) {
+    pending = null;
+    if (!source.loaded) {
+      pending = kanji;
+      return;
+    }
+    const { rowByKanji, cardByKanji } = source.index;
+    if (rowByKanji.has(kanji) || cardByKanji.has(kanji)) {
+      if (open !== kanji) openCard(kanji, { push: false });
+      return;
+    }
+    closeCard();
+    input.value = kanji;
+    save('rtk:query', kanji);
+    render();
+    history.replaceState(null, '', hashFor('rtk'));
+  }
+
+  // From a link or a refresh there may be no results entry to go back to.
+  $('rtk-back').addEventListener('click', () => {
+    if (history.state?.rtkCard) return history.back();
+    closeCard();
+    history.replaceState(null, '', hashFor('rtk'));
+  });
 
   const update = debounce(() => {
     save('rtk:query', input.value);
@@ -128,11 +158,21 @@ export function initRtk(source) {
 
   source.on(() => {
     render();
-    if (open) showCard(open);
+    if (pending) showLinked(pending);
+    else if (open) showCard(open);
   });
 
   return {
-    onShow: render,
+    // arg: the kanji whose card the URL names, or '' for the results.
+    onShow(arg) {
+      render();
+      if (arg) showLinked(arg);
+      else if (open || pending) {
+        pending = null;
+        closeCard();
+      }
+    },
+    current: () => open ?? pending ?? '',
     // Called on each sync status change: until the files are on this device,
     // the page shows whether they're being fetched or why that failed.
     refresh: () => !source.loaded && render(),
