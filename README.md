@@ -32,6 +32,12 @@ The ? button in the top bar shows a summary of the gestures below.
 - Swipe an item left or right to mark it done (with Undo). Done items are hidden in the app but kept in the file.
 - Long-press an item to move it to the other list, mark it done or delete it.
 
+**RTK**: look up a kanji from *Remembering the Kanji* by frame number, kanji or keyword, in a keyword index (`rtk1-keywords.csv`) and an Anki deck (`rtk1-v6.md`) kept in another repo. These files are only read, never written.
+
+- Matches in the index come first. Below them, on pale gold, come cards that mention what you typed in any field.
+- Tap a row to see the back of its card. Tap the kanji to watch it drawn stroke by stroke. **Results**, or the back gesture, returns to the list.
+- The files are kept on the device. They're checked for changes when you tap the sync icon, and otherwise every 6 hours.
+
 ## Setup
 
 1. **Create a repo for the data**, e.g. `daruma-filestore`. It can be private, and it can be empty: the app creates the files.
@@ -40,6 +46,8 @@ The ? button in the top bar shows a summary of the gestures below.
    - *Permissions → Contents*: *Read and write*. Nothing else is needed.
 3. **Open the app in Chrome on your phone** and choose ⋮ → **Add to home screen → Install**. On iOS, use Safari's Share → **Add to Home Screen**.
 4. **In ⚙ Settings**, enter the file URLs, e.g. `https://github.com/george-hawkins/daruma-filestore/blob/master/forgotten.md` and `…/blob/master/corrections.md` (the branch must exist, or be the repo's default branch if the repo is still empty), and the token. Then tap **Save and test**.
+
+5. **For RTK lookup**, enter the URLs of the two files, e.g. `https://github.com/george-hawkins/anki-decks/blob/master/rtk1-keywords.csv` and `…/blob/master/rtk1-v6.md`. If that repo is private, add a fine-grained token for it with *Contents: Read-only*; for a public repo, leave the token empty.
 
 The token is stored only on the device. A token is needed because GitHub doesn't support signing in from a purely static site (it requires a server-side secret).
 
@@ -83,7 +91,7 @@ $ python3 -m http.server 8000
 
 Then open http://localhost:8000/. Service workers work on `localhost` without HTTPS.
 
-The sync merge logic has unit tests (no dependencies; Node 20 or later):
+The sync merge logic and the RTK parsing and search have unit tests (no dependencies; Node 20 or later):
 
 ```
 $ node --test
@@ -95,9 +103,12 @@ Layout:
 | --- | --- |
 | `index.html`, `styles.css` | The single page and its styles |
 | `js/app.js` | Wiring: pages, tabs, sync indicator |
-| `js/kanji.js`, `js/corrections.js` | The two activities |
+| `js/kanji.js`, `js/corrections.js`, `js/rtk.js` | The three activities |
+| `js/rtkdata.js`, `js/rtksource.js` | RTK files: parsing, search and card Markdown; fetching and caching |
+| `js/kanjivg-animate.js`, `kanjivg/` | Stroke-order animation and the KanjiVG drawings of the 2200 RTK kanji |
+| `fonts/` | Klee One, used for Japanese text on the RTK page |
 | `js/sync.js` | Local-first documents and GitHub sync |
-| `js/merge.js`, `test/` | Three-way merge of list items, and its tests |
+| `js/merge.js`, `test/` | Three-way merge of list items, and the tests (merge and RTK search) |
 | `js/github.js` | Minimal GitHub Contents API client |
 | `js/markdown.js` | Markdown ⇄ data conversion |
 | `js/settings.js`, `js/store.js`, `js/ui.js` | Settings page, localStorage, shared UI helpers |

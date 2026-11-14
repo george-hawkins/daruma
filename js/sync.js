@@ -14,6 +14,9 @@
 //   then push the result.
 // Writes name the sha they're based on, so GitHub rejects a write if another
 // instance pushed in between; the sync then re-reads, re-merges and retries.
+//
+// Read-only sources (the RTK files) are refreshed by the same syncs, but only
+// when forced (tapping the sync icon) or when their own copy is stale.
 
 import { load, save } from './store.js';
 import { parseGitHubUrl, getFile, getBlob, putFile } from './github.js';
@@ -52,10 +55,11 @@ export class SyncedDoc {
 }
 
 export class Syncer {
-  constructor(docs, { onStatus, notify }) {
-    Object.assign(this, { docs, onStatus, notify });
+  constructor(docs, { sources = [], onStatus, notify }) {
+    Object.assign(this, { docs, sources, onStatus, notify });
     this.running = null;
     this.again = false;
+    this.force = false;
     this.error = null;
     this.lastPull = 0;
     this.timer = null;
@@ -91,8 +95,10 @@ export class Syncer {
   // quick: push dirty docs only, without first checking GitHub (used when the
   // app is being backgrounded and may be frozen or killed at any moment). If
   // GitHub has moved on, the write is rejected and the next full sync merges.
-  sync({ quick = false } = {}) {
+  // force: also check the read-only sources, however recently they were checked.
+  sync({ quick = false, force = false } = {}) {
     clearTimeout(this.timer);
+    this.force ||= force;
     if (this.running) {
       this.again = true;
       return this.running;
@@ -101,7 +107,9 @@ export class Syncer {
       do {
         this.again = false;
         this.report();
-        await this.syncAll(quick);
+        const forced = this.force;
+        this.force = false;
+        await this.syncAll(quick, forced);
         quick = false;
       } while (this.again);
     })().finally(() => {
@@ -112,7 +120,7 @@ export class Syncer {
     return this.running;
   }
 
-  async syncAll(quick) {
+  async syncAll(quick, force) {
     const settings = getSettings();
     const errors = [];
     for (const d of this.docs) {
@@ -127,6 +135,14 @@ export class Syncer {
       }
     }
     if (!quick) {
+      for (const src of this.sources) {
+        try {
+          await src.refresh({ force });
+        } catch (e) {
+          src.fail(e);
+          errors.push(`${src.name}: ${e.message}`);
+        }
+      }
       this.lastPull = Date.now();
       const error = errors.join('\n') || null;
       if (error && error !== this.error) this.notify(`Sync failed: ${error}`, null, 8000);
@@ -227,12 +243,12 @@ export class Syncer {
         `  last synced GitHub version: ${st.sha ? st.sha.slice(0, 7) : 'none'}`,
         `  last sync: ${r ? `${r.time.toLocaleTimeString()}: ${r.text}` : 'not since the app was opened'}`,
       ].join('\n');
-    }).join('\n\n');
+    }).concat(this.sources.map((src) => src.details())).join('\n\n');
   }
 
   report() {
     const s = getSettings();
-    const configured = s.token && this.docs.some((d) => parseGitHubUrl(s[d.urlKey]));
+    const configured = (s.token && this.docs.some((d) => parseGitHubUrl(s[d.urlKey]))) || this.sources.some((src) => src.configured(s));
     const dirty = this.docs.some((d) => d.state.dirty);
     let state, label;
     if (!configured) [state, label] = ['off', 'Sync is not set up yet (see settings)'];

@@ -2,21 +2,24 @@ import { load, save } from './store.js';
 import { VERSION } from './version.js';
 import { parseGitHubUrl, getRepo, getFile, branchExists } from './github.js';
 
-const DEFAULTS = { token: '', forgottenUrl: '', correctionsUrl: '' };
+const DEFAULTS = { token: '', forgottenUrl: '', correctionsUrl: '', rtkKeywordsUrl: '', rtkDeckUrl: '', rtkToken: '' };
 
 export const getSettings = () => ({ ...DEFAULTS, ...load('settings', {}) });
 
 export function initSettings(syncer) {
   const $ = (id) => document.getElementById(id);
   const form = $('settings-form');
-  const fields = { forgottenUrl: $('set-forgotten'), correctionsUrl: $('set-corrections'), token: $('set-token') };
+  const fields = {
+    forgottenUrl: $('set-forgotten'), correctionsUrl: $('set-corrections'), token: $('set-token'),
+    rtkKeywordsUrl: $('set-rtk-keywords'), rtkDeckUrl: $('set-rtk-deck'), rtkToken: $('set-rtk-token'),
+  };
   const result = $('set-result');
   const details = $('set-details');
   const showDetails = () => (details.textContent = syncer.details());
   $('set-version').textContent = `Daruma version ${VERSION}`;
   $('set-sync').addEventListener('click', async () => {
     details.textContent = 'Syncing…';
-    await syncer.sync();
+    await syncer.sync({ force: true });
     showDetails();
   });
 
@@ -28,9 +31,11 @@ export function initSettings(syncer) {
     const lines = await Promise.all([
       test('Forgotten kanji', s.forgottenUrl, s.token),
       test('Corrections', s.correctionsUrl, s.token),
+      test('RTK keywords', s.rtkKeywordsUrl, s.rtkToken, { readOnly: true }),
+      test('RTK cards', s.rtkDeckUrl, s.rtkToken, { readOnly: true }),
     ]);
     result.textContent = lines.join('\n');
-    await syncer.sync();
+    await syncer.sync({ force: true });
     showDetails();
   });
 
@@ -44,14 +49,16 @@ export function initSettings(syncer) {
   };
 }
 
-async function test(label, url, token) {
+// Read-only files must exist, and need no token if the repo is public.
+async function test(label, url, token, { readOnly = false } = {}) {
   if (!url) return `${label}: not set`;
   const loc = parseGitHubUrl(url);
-  if (!loc) return `${label}: ✗ expected https://github.com/OWNER/REPO/blob/BRANCH/PATH.md`;
-  if (!token) return `${label}: ✗ no token`;
+  if (!loc) return `${label}: ✗ expected https://github.com/OWNER/REPO/blob/BRANCH/PATH`;
+  if (!token && !readOnly) return `${label}: ✗ no token`;
   try {
     const repo = await getRepo(loc, token);
-    if (!repo) return `${label}: ✗ repository ${loc.owner}/${loc.repo} not found, or the token can't access it`;
+    if (!repo) return `${label}: ✗ repository ${loc.owner}/${loc.repo} not found, or ${token ? "the token can't access it" : 'it is private and needs a token'}`;
+    if (readOnly) return `${label}: ${(await getFile(loc, token)) ? '✓ file found' : `✗ ${loc.path} not found on branch "${loc.branch}"`}`;
     if (!(await branchExists(loc, token))) {
       if (repo.default_branch !== loc.branch) return `${label}: ✗ branch "${loc.branch}" doesn't exist (the default branch is "${repo.default_branch}")`;
       return `${label}: ✓ repository is empty; the first push will create ${loc.path}`;

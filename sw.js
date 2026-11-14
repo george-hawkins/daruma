@@ -5,10 +5,13 @@
 
 const CACHE = 'daruma-shell';
 const TIMEOUT = 3000;
+// The font and the KanjiVG drawings (kanjivg/) aren't listed: they're large,
+// and are cached as they're first used, like anything else fetched.
 const SHELL = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/store.js', 'js/sync.js', 'js/github.js', 'js/markdown.js',
   'js/settings.js', 'js/ui.js', 'js/version.js', 'js/merge.js', 'js/kanji.js', 'js/corrections.js',
+  'js/rtk.js', 'js/rtkdata.js', 'js/rtksource.js', 'js/kanjivg-animate.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon.png',
 ];
 

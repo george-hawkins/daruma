@@ -18,6 +18,17 @@
   --row: 46px;
 }
 
+/* Klee One (a textbook-style hand) for Japanese only: the unicode-range
+   leaves Latin text to the system font. Used by the RTK page. */
+@font-face {
+  font-family: "Klee One";
+  src: url("fonts/KleeOne-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+
 * { box-sizing: border-box; }
 
 html, body { height: 100%; margin: 0; }
@@ -244,6 +255,119 @@ main { flex: 1; min-height: 0; position: relative; }
 .row-inner:has(input) { box-shadow: inset 3px 0 0 var(--red); }
 .row input { padding: 0; }
 
+/* RTK lookup */
+
+#page-rtk { padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+#rtk-search { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.search-form::before { content: none; }
+.search-form svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  color: var(--red);
+  pointer-events: none;
+}
+.search-form input { appearance: none; -webkit-appearance: none; }
+.search-form input::-webkit-search-decoration { -webkit-appearance: none; }
+
+#rtk-results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.rtk-message { margin: 0; padding: 14px 16px; color: var(--muted); }
+
+.rtk-table { width: 100%; border-collapse: collapse; }
+.rtk-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px 6px;
+  background: var(--paper);
+  box-shadow: inset 0 -1px 0 var(--rule-strong);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: left;
+}
+.rtk-table td { padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.rtk-table .frame { width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.rtk-table td.kanji { width: 2.4em; font: 600 26px/1.2 "Klee One", "Noto Sans JP", "Hiragino Sans", serif; text-align: center; }
+.rtk-table th.kanji { text-align: center; }
+.rtk-table td.kw { overflow-wrap: anywhere; }
+.rtk-table tr.hit { cursor: pointer; }
+.rtk-table tr.hit:active td { background: var(--rule); }
+
+.group-title th {
+  padding: 16px 12px 6px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--red);
+  border-bottom: 2px solid var(--rule-strong);
+}
+.group-file { margin-left: 4px; font-size: 13px; font-weight: 400; color: var(--muted); }
+/* Matches found only in the cards: on faintly gold paper with a gold margin. */
+.group-deck .group-title th { color: #8a6a1f; border-bottom-color: var(--gold-light); }
+.group-deck tr.hit td { background: #fcf7e9; border-bottom-color: #f1e3bd; }
+.group-deck tr.hit td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.group-deck tr.hit:active td { background: #f5e9c6; }
+
+#rtk-card {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-y: auto;
+  background: var(--paper);
+}
+#page-rtk.card-open #rtk-card { display: block; }
+#rtk-card-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 calc(16px + env(safe-area-inset-right)) 0 env(safe-area-inset-left);
+  background: var(--paper);
+  border-bottom: 2px solid var(--rule-strong);
+}
+#rtk-back {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--row);
+  padding: 0 14px 0 8px;
+  border: 0;
+  background: none;
+  color: var(--red);
+  font-weight: 600;
+}
+#rtk-back svg { width: 22px; height: 22px; }
+#rtk-card-frame { margin-left: auto; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* The back of the Anki card. Sizes are in em so they scale with the card. */
+.rtk-card {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 22px calc(40px + env(safe-area-inset-bottom));
+  font: 20px/1.5 "Klee One", system-ui, -apple-system, Roboto, sans-serif;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.rtk-card .kanjivg-animate { display: inline-block; width: 8em; height: 8em; }
+.rtk-card .kanjivg-animate svg { width: 100%; height: 100%; }
+.rtk-card .kanjivg-animate.no-svg { width: auto; height: auto; font-size: 6em; line-height: 1.3; }
+.rtk-card .keyword { margin-top: 0.3em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.02em; }
+.rtk-card .story { margin-top: 0.8em; }
+.rtk-card .note { margin-top: 0.8em; font-size: 0.85em; color: #555; }
+.rtk-card a { color: var(--red); }
+
 /* Settings */
 
 #page-settings { overflow-y: auto; }
@@ -382,6 +506,13 @@ dialog.wide { width: min(94vw, 520px); }
 .help li { margin: 6px 0; }
 .help li::marker { color: var(--rule-strong); }
 .dlg-row .dlg-btn:only-child { color: var(--red); }
+
+/* Three tabs and three icons only just fit on a 412 px wide phone. */
+@media (max-width: 400px) {
+  .tab { padding-left: 11px; padding-right: 11px; }
+  .tab.active::after { left: 7px; right: 7px; }
+  .icon-btn { padding-left: 7px; padding-right: 7px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

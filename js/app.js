@@ -3,6 +3,8 @@ import { SyncedDoc, Syncer } from './sync.js';
 import { parseList, serializeList, emptyList, mergeList3, parseSections, serializeSections, emptySections, mergeSections3 } from './markdown.js';
 import { initKanji } from './kanji.js';
 import { initCorrections } from './corrections.js';
+import { initRtk } from './rtk.js';
+import { RtkSource } from './rtksource.js';
 import { initSettings } from './settings.js';
 import { notify, showHelp } from './ui.js';
 
@@ -14,6 +16,10 @@ const correctionsDoc = new SyncedDoc('corrections', {
   urlKey: 'correctionsUrl', empty: emptySections, parse: parseSections, serialize: serializeSections, merge3: mergeSections3,
   count: (d) => d.corrections.length + d.maybe.length + d.done.length,
 });
+
+// Read-only: the RTK keyword index and Anki deck, from another repo.
+const rtkSource = new RtkSource();
+let rtkPage = null; // shows "fetching…" until the first sync, so it's told about each one
 
 const statusBtn = document.getElementById('sync-status');
 // Line icons: a cloud plus a state mark.
@@ -29,8 +35,10 @@ const MARKS = {
 const icon = (state) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CLOUD}"/><path d="${MARKS[state]}"/></svg>`;
 let statusLabel = '';
 const syncer = new Syncer([kanjiDoc, correctionsDoc], {
+  sources: [rtkSource],
   notify,
   onStatus(state, label) {
+    rtkPage?.refresh();
     statusBtn.innerHTML = icon(state);
     statusBtn.className = `icon-btn ${state}`;
     statusBtn.title = statusLabel = label;
@@ -39,13 +47,14 @@ const syncer = new Syncer([kanjiDoc, correctionsDoc], {
 });
 statusBtn.addEventListener('click', () => {
   notify(statusLabel);
-  syncer.sync();
+  syncer.sync({ force: true });
 });
 document.getElementById('help-btn').addEventListener('click', () => showHelp(document.getElementById('help')));
 
 const pages = {
   kanji: initKanji(kanjiDoc),
   corrections: initCorrections(correctionsDoc),
+  rtk: (rtkPage = initRtk(rtkSource)),
   settings: initSettings(syncer),
 };
 

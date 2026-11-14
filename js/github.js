@@ -16,20 +16,22 @@ export function parseGitHubUrl(url) {
   return { owner: m[1], repo: m[2], branch: m[3], path: decodeURIComponent(m[4]) };
 }
 
-const headers = (token) => ({ Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' });
+// Without a token, only public repos can be read (and GitHub allows 60
+// unauthenticated requests an hour).
+const headers = (token, accept = 'application/vnd.github+json') => ({ ...(token ? { Authorization: `Bearer ${token}` } : {}), Accept: accept });
 const repoUrl = (loc) => `${API}/repos/${loc.owner}/${loc.repo}`;
 const contentsUrl = (loc) => `${repoUrl(loc)}/contents/${loc.path.split('/').map(encodeURIComponent).join('/')}`;
 
 // A 404 is returned (not thrown) when `allow404` is set, since it then means
 // "doesn't exist"; any other failure throws with GitHub's message.
-async function request(url, { allow404 = false, ...options } = {}) {
+async function request(url, { allow404 = false, allow304 = false, ...options } = {}) {
   let r;
   try {
     r = await fetch(url, { cache: 'no-store', ...options });
   } catch (e) {
     throw new GitHubError(0, navigator.onLine ? `network error (${e.message})` : 'offline');
   }
-  if (r.ok || (allow404 && r.status === 404)) return r;
+  if (r.ok || (allow404 && r.status === 404) || (allow304 && r.status === 304)) return r;
   let message = `${r.status} ${r.statusText}`;
   try {
     const j = await r.json();
@@ -54,6 +56,19 @@ export async function getFile(loc, token) {
   if (r.status === 404) return null;
   const j = await r.json();
   return { sha: j.sha, text: decodeBase64(j.content) };
+}
+
+// A file's text, fetched raw (so not limited to 1 MB like getFile). With the
+// ETag of an earlier fetch, returns { unchanged: true } if the file hasn't
+// changed (a 304, which doesn't count against GitHub's rate limit). Returns
+// null if the file doesn't exist, otherwise { text, etag }.
+export async function getRaw(loc, token, etag = null) {
+  const h = headers(token, 'application/vnd.github.raw+json');
+  if (etag) h['If-None-Match'] = etag;
+  const r = await request(`${contentsUrl(loc)}?ref=${encodeURIComponent(loc.branch)}`, { headers: h, allow404: true, allow304: true });
+  if (r.status === 404) return null;
+  if (r.status === 304) return { unchanged: true };
+  return { text: await r.text(), etag: r.headers.get('ETag') };
 }
 
 // The content of a blob by sha (any version of a file that was ever pushed),

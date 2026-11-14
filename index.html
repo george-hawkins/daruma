@@ -13,6 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Daruma">
   <link rel="stylesheet" href="styles.css">
+  <script src="js/kanjivg-animate.js"></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -20,6 +21,7 @@
     <nav id="tabs">
       <button class="tab" data-page="kanji">Kanji</button>
       <button class="tab" data-page="corrections">Corrections</button>
+      <button class="tab" data-page="rtk">RTK</button>
     </nav>
     <button id="sync-status" class="icon-btn" aria-label="Sync status"></button>
     <button id="help-btn" class="icon-btn" aria-label="Help">
@@ -65,6 +67,26 @@
       </div>
     </section>
 
+    <section id="page-rtk" class="page">
+      <div id="rtk-search">
+        <form id="rtk-form" class="add-form search-form" role="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="M14.5 14.5l5 5"/></svg>
+          <input id="rtk-query" type="search" placeholder="Frame, kanji or keyword" enterkeyhint="search"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Frame, kanji or keyword">
+        </form>
+        <div id="rtk-results"></div>
+      </div>
+      <div id="rtk-card">
+        <div id="rtk-card-bar">
+          <button id="rtk-back" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg>Results
+          </button>
+          <span id="rtk-card-frame"></span>
+        </div>
+        <div id="rtk-card-body" class="rtk-card"></div>
+      </div>
+    </section>
+
     <section id="page-settings" class="page">
       <form id="settings-form" class="settings">
         <h2>GitHub sync</h2>
@@ -82,6 +104,22 @@
           <em>Repository access → Only select repositories</em> (your notes repo) and
           <em>Permissions → Contents → Read and write</em>. Nothing else is needed.
         </p>
+        <h2>RTK lookup</h2>
+        <label>Keywords file (CSV)
+          <input id="set-rtk-keywords" type="url" placeholder="https://github.com/owner/repo/blob/main/rtk1-keywords.csv" autocomplete="off">
+        </label>
+        <label>Cards file (Markdown)
+          <input id="set-rtk-deck" type="url" placeholder="https://github.com/owner/repo/blob/main/rtk1-v6.md" autocomplete="off">
+        </label>
+        <label>Access token for these files
+          <input id="set-rtk-token" type="password" autocomplete="off" placeholder="Leave empty if the repo is public">
+        </label>
+        <p class="hint">
+          These files are only read, never written. For a private repo, create a
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a>
+          for just that repo with <em>Permissions → Contents → Read-only</em>.
+          They're checked for changes when you tap the cloud, and otherwise every 6 hours.
+        </p>
         <button type="submit" class="primary">Save and test</button>
         <div id="set-result"></div>
         <h2>Sync details <button type="button" id="set-sync" class="small">Sync now</button></h2>
@@ -89,6 +127,7 @@
         <h2>About</h2>
         <p id="set-version" class="hint"></p>
         <p class="hint">Daruma keeps everything on this device first and pushes it to GitHub when you leave the app, after a short pause in editing, or when you tap the sync icon.</p>
+        <p class="hint">Stroke order drawings from <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> (CC BY-SA 3.0). Japanese text in the <a href="https://fonts.google.com/specimen/Klee+One" target="_blank" rel="noopener">Klee One</a> font (SIL Open Font License).</p>
       </form>
     </section>
   </main>
@@ -107,6 +146,12 @@
       <li>Tap an item to edit it. Enter starts a new item below it; an item you empty is removed.</li>
       <li>Swipe an item left or right to mark it done. <b>Undo</b> appears for a few seconds.</li>
       <li>Long-press an item to move it to the other list, mark it done or delete it.</li>
+    </ul>
+    <h2>RTK</h2>
+    <ul>
+      <li>Type a frame number, a kanji or a keyword. Matches in the keyword index come first, then cards that mention it anywhere (on a tinted background).</li>
+      <li>Tap a row to see its card, and tap the kanji to watch it being drawn. <b>Results</b> or the back gesture returns to the list.</li>
+      <li>The RTK files are read-only. They're checked for changes when you tap the cloud, and otherwise every 6 hours.</li>
     </ul>
     <h2>Saving and sync</h2>
     <ul>
