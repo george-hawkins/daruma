@@ -15,7 +15,7 @@ The ? button in the top bar shows a summary of the gestures below.
 **Kanji**: a list of English keywords for kanji you've forgotten, next to a scratch pad for writing kanji with your finger.
 
 - Type a keyword in the box at the top and press Enter; new entries go at the top.
-- Long-press an entry to edit or delete it.
+- Tap an entry to look it up on the RTK page (its card opens straight away if the entry is exactly an RTK keyword). Long-press an entry to edit or delete it.
 - Draw on the pad and tap **Clear** to start again. There are deliberately no colours, widths or undo.
 - ◀ / ▶ hides or shows the list to give more room for drawing.
 
@@ -25,11 +25,13 @@ The ? button in the top bar shows a summary of the gestures below.
 - Tap an item to edit it in place. Enter starts a new item below it, and an item left empty is removed.
 - Swipe an item left or right to mark it done (with Undo). Done items are hidden in the app but kept in the file.
 - Long-press an item to move it to the other list, mark it done or delete it.
+- **Done** (top right) lists the items marked done, newest first, with the day each was done. Tap one to move it back to either list, or to delete it for good.
 
 **RTK**: look up a kanji from *Remembering the Kanji* by frame number, kanji or keyword, in a keyword index (`rtk1-keywords.csv`) and an Anki deck (`rtk1-v6.md`) kept in another repo. These files are only read, never written.
 
-- Matches in the index come first. Below them, on pale gold, come cards that mention what you typed in any field.
-- Tap a row to see the back of its card. Tap the kanji to watch it drawn stroke by stroke. **Results**, or the back gesture, returns to the list.
+- Matches in the index come first. Below them, on pale gold, come cards that mention what you typed in any field. Each group shows its first 20 matches, then **Show all**.
+- With nothing typed, the cards you opened most recently are listed.
+- Tap a row to see the back of its card, with the Clue (which Anki shows on the front) under the keyword. Tap the kanji to watch it drawn stroke by stroke. **Results**, or the back gesture, returns to the list.
 - The address shows the card (e.g. `…/daruma/#rtk/可`), so refreshing keeps it open, and you can bookmark or share a link straight to a kanji's card.
 - The files are kept on the device. They're checked for changes when you tap the sync icon, and otherwise every 6 hours.
 
@@ -49,7 +51,7 @@ The token is stored only on the device. A token is needed because GitHub doesn't
 ## How data is saved
 
 - Every change is saved on the device immediately, so nothing is lost if you switch away or the app is killed.
-- Changes are pushed to GitHub, one commit per push, when you leave the app, a minute after your last edit, or when you tap the sync icon in the top bar. The app pulls from GitHub when it's opened or brought back to the front.
+- Changes are pushed to GitHub, one commit per push, when you leave the app, a minute after your last edit, or when you tap the sync icon in the top bar (it then says how the sync went). The app pulls from GitHub when it's opened or brought back to the front.
 - Sync icon: a cloud with a tick (synced), with an arrow (changes waiting to be pushed; it pulses while syncing), crossed out (offline, GitHub can't be reached, or not set up; nothing is lost, it catches up later) or with "!" (needs attention; tap it).
 - You can use Daruma on several devices (e.g. a phone and a laptop browser) and edit the files on GitHub too. Enter the settings on each device. Each copy picks up the latest version when it's opened, comes back to the front, or every few minutes while it's open. If a device has unpushed changes and the file changed elsewhere too, the two are merged item by item: additions, edits, moves and items marked done from both sides are kept, including a word added again that is already further down the list.
 

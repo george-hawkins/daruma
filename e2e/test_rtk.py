@@ -237,3 +237,36 @@ def test_the_focus_moves_to_the_card_only_for_keyboard_users(app, files):
     app.page.locator("tr.hit", has_text="可").focus()
     app.page.keyboard.press("Enter")
     assert focused() == "rtk-back"
+
+
+def test_a_card_shows_its_clue_under_the_keyword(app, files):
+    open_rtk(app)
+    open_card(app, "1", "一")
+    assert app.page.locator("#rtk-card-body > div").all_inner_texts()[:2] == ["ONE", "Clue: not numeral I"]
+    app.page.click("#rtk-back")
+    open_card(app, "97", "可")
+    assert app.page.locator("#rtk-card-body .clue").count() == 0
+
+
+def test_the_empty_search_shows_the_cards_viewed_recently(app, files):
+    open_rtk(app)
+    open_card(app, "can", "可")
+    app.page.click("#rtk-back")
+    open_card(app, "can", "缶")
+    app.page.click("#rtk-back")
+    search(app, "")
+    assert results(app) == {"recent": [["2116", "缶", "tin can"], ["97", "可", "can"]]}
+    app.page.locator("tr.hit", has_text="可").click()
+    assert app.shown() == "rtk Frame 97"
+
+
+def test_long_result_groups_show_20_rows_then_show_all(app, files):
+    cards = "".join(f"START\nJapanese RTK\nKeyword: k{i}\nKanji: {chr(0x4E00 + 100 + i)}\nStory: a zebra story\nEND\n\n" for i in range(25))
+    files.set(DECK, cards)
+    open_rtk(app)
+    search(app, "zebra")
+    assert len(results(app)["deck"]) == 20
+    app.page.click("text=Show all 25")
+    assert len(results(app)["deck"]) == 25
+    search(app, "zebra story")  # a new search starts capped again
+    assert len(results(app)["deck"]) == 20

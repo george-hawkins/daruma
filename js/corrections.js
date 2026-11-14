@@ -2,10 +2,19 @@
 // mark it done (it moves to the hidden Done section of the file).
 
 import { load, save } from './store.js';
-import { el, gestures, menu, notify, debounce } from './ui.js';
+import { el, gestures, menu, notify, debounce, pickFrom } from './ui.js';
 import { newItem, endsGroup, locate } from './markdown.js';
 
 const KEYS = ['corrections', 'maybe'];
+
+// "14 Nov" (with the year if it's not this one) for a group's UTC timestamp,
+// in local time; '' if there's none.
+export function dayOf(time, now = new Date()) {
+  const d = new Date(time);
+  if (!time || Number.isNaN(d.getTime())) return '';
+  const opts = { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) };
+  return d.toLocaleDateString(undefined, opts);
+}
 const TITLES = { corrections: 'Corrections', maybe: 'Maybe' };
 
 export function initCorrections(doc) {
@@ -15,6 +24,7 @@ export function initCorrections(doc) {
     parts[key] = { list: root.querySelector('.list'), form: root.querySelector('form'), input: root.querySelector('form input'), count: root.querySelector('.count') };
   }
   const items = (key) => doc.data[key];
+  const doneCount = document.querySelector('#show-done .done-count');
   let editing = null; // token identifying the row currently being edited
 
   // Rows left empty are dropped, except a row about to be edited.
@@ -30,6 +40,7 @@ export function initCorrections(doc) {
       parts[key].list.replaceChildren(...list.map((it, i) => row(key, i, it, endsGroup(list, i))));
       parts[key].count.textContent = list.length || '';
     }
+    doneCount.textContent = doc.data.done.length || '';
     if (focus) startEdit(focus.key, focus.i);
   }
 
@@ -129,6 +140,32 @@ export function initCorrections(doc) {
     doc.changed();
     render();
   }
+
+  // Done items are hidden from the lists, but can be looked at here and
+  // moved back (or deleted for good).
+  const SHOW_DONE = 100;
+  async function showDone() {
+    const done = doc.data.done;
+    const older = done.length - SHOW_DONE;
+    const picked = await pickFrom('Done', done.slice(0, SHOW_DONE).map((it) => [it.text, dayOf(it.time), it]), {
+      empty: 'Nothing has been marked done yet.',
+      footer: older > 0 ? `…and ${older} older, in the file on GitHub.` : '',
+    });
+    if (!picked) return;
+    const choice = await menu(picked.text, [
+      ['Back to Corrections', 'corrections'],
+      ['Back to Maybe', 'maybe'],
+      ['Delete', 'delete', 'danger'],
+      ['Cancel', null],
+    ]);
+    const j = locate(doc.data.done, picked);
+    if (!choice || j < 0) return;
+    const [item] = doc.data.done.splice(j, 1);
+    if (choice !== 'delete') items(choice).unshift(newItem(items(choice), item.text));
+    doc.changed();
+    render();
+  }
+  document.getElementById('show-done').addEventListener('click', showDone);
 
   for (const key of KEYS) {
     const { list, form, input } = parts[key];

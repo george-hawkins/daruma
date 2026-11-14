@@ -20,6 +20,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] End-to-end tests (0.9.1): `uv run pytest` (pytest + Playwright, real app in Chrome, fake GitHub). They found two old bugs, now fixed: see *Testing*.
 - [x] Page and RTK card in the URL (0.9.2): `#rtk/可` survives a refresh and can be bookmarked.
 - [x] Review (0.9.3): fixes for merging repeated lines, offline shown as an error, clicks lost while editing, swipes and edits during a sync, no-op commits, slow first loads with the service worker, storage-full errors. See *Testing* for the list.
+- [x] UX changes agreed after the review (0.10.0): tap a forgotten word to look it up, a Done list with restore, the Clue on RTK cards, recently viewed cards, results capped at 20, the cloud reports how a sync went, status bar colour, Klee One for all Japanese text.
 - [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
 
 ## Requirements (the "what")
@@ -57,7 +58,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - Header, preamble and unknown sections can only change on GitHub, so GitHub's are kept.
   - 0.6's "which version do you want to keep?" prompt was replaced by this merge.
 - Settings → *Sync details* shows, per document, the item count, whether there are unpushed changes, the last known GitHub blob sha and the result of the last sync. A missing file is created on the first sync, even when there is nothing new to push.
-- Sync indicator: a line-icon cloud with a tick (synced), an up arrow (pending; pulsing while syncing), a slash (offline, GitHub unreachable, or not set up) or "!" (error). Tapping it shows the status and syncs now.
+- Sync indicator: a line-icon cloud with a tick (synced), an up arrow (pending; pulsing while syncing), a slash (offline, GitHub unreachable, or not set up) or "!" (error). Tapping it shows "Syncing…", syncs now, then shows the status it ends in (0.10.0; before, it showed the status from before the sync), unless another notice was shown meanwhile (e.g. "Merged changes…" or an Undo), which is left alone (`noticeCount()` in `ui.js`).
 - Failing to reach GitHub at all (a network error, status 0) isn't an error: there's no "Sync failed" notice, and the icon shows the slash, labelled *Offline* or *Can't reach GitHub* (0.9.3; before, being offline showed "!" and a notice on every open). Other failures (bad token, missing repo, …) are errors as before.
 - If a save to localStorage fails (e.g. storage is full), a notice says so (`onSaveError` in `store.js`). The data stays in memory and is still pushed to GitHub.
 - Help: the ? button in the top bar opens a dialog. Its content is the `<template id="help">` in `index.html`; keep it in step with the gestures.
@@ -118,6 +119,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 
 ### Forgotten kanji
 - Left third: an add box at the top (Enter adds the entry at the top; focus stays in the box for the next word), with the list below it. Long-press an entry → Edit / Delete.
+- Tap an entry → the RTK page searches for it (0.10.0), opening the card straight away if exactly one kanji has it as its keyword, British form or usual form (`exactKeyword` in `rtkdata.js`, ignoring case). This is a step forward rather than a tab switch, so it pushes a history entry: back returns from the card to the results, and from the results to the list.
 - ◀/▶ button hides or shows the list (remembered). The scroll position is saved and restored.
 - Canvas: Pointer Events, `touch-action: none`, high-DPI, coalesced events plus quadratic smoothing. Only the first finger draws.
 - Brush diameter = `BRUSH` (0.035) × the canvas's shorter side. The reference image is ~4.9 % of the kanji's size, and this gives ~4 %.
@@ -130,6 +132,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - A swipe acts on the item swiped, looked up again after the slide-away animation, as a sync may have changed the list in between (0.9.3).
 - **Swipe a row either way → done**, with an **Undo** snackbar.
 - Long-press → Move to the other list / Mark done / Delete.
+- **Done n** (a small button in the Corrections heading, 0.10.0) opens a dialog of the done items, newest first (up to 100; the rest are only in the file), each with the local day of its group ("14 Nov", with the year if it's not this one). Tapping one → Back to Corrections / Back to Maybe / Delete. Moving back counts as arriving in that list (it joins or starts a group like a new item). (`pickFrom` in `ui.js`, `dayOf` in `corrections.js`.)
 
 ### RTK lookup
 - Tab **RTK**. It's backed by two **read-only** files in a different repo, so it has its own settings: the CSV URL, the deck URL and an optional token (fine-grained, *Contents: Read-only*; not needed for a public repo, since unauthenticated API reads are allowed, 60 an hour).
@@ -141,12 +144,13 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - Several kanji (e.g. a pasted word): each one in the CSV, plus cards containing the whole string.
   - Anything else: a case-insensitive whole-word phrase (so "can" isn't "candle" or "scan") in the CSV's `keyword`, `british_english` and `usual_form`, plus all card fields with `*`, `_` and backticks ignored. Text with kana or kanji is matched as a plain substring.
   - The CSV and the deck are joined on the kanji only. Cards whose kanji is already in the CSV group are left out of the deck group (they'd be the same row).
-- **Results:** two groups, CSV first, each in file order. The deck group ("Also found in cards") is on pale gold paper with a gold margin.
-- **Card:** George's back template (`<span class="kanjivg-animate">{{Kanji}}</span>`, keyword, story, `Note: …` if present), plus `Update: …` styled like the note, so the deck's optional sixth field isn't lost. Inline Markdown: `**bold**`, `_italic_`, `*italic*` (also inside a word: `*gold*fish`), code, links and hard newlines. A kanji with no card yet shows just the drawing and keyword. Styling follows `rtk-mockup.html` (20 px, line-height 1.5, centered, 8em drawing, uppercase bold keyword), without night mode or the mock frame.
+- **Results:** two groups, CSV first, each in file order. The deck group ("Also found in cards") is on pale gold paper with a gold margin. Each group shows its first 20 rows, then a "Show all n" row (0.10.0; George's choice of 20). A common word like "the" matches ~870 cards, which took ~80 ms to render per keystroke on a Mac. A new search starts capped again.
+- **Recently viewed** (0.10.0): with nothing typed, the last 10 cards opened (`daruma:rtk:recent`, this device only) are listed under the hint, as a group like the index.
+- **Card:** George's back template (`<span class="kanjivg-animate">{{Kanji}}</span>`, keyword, story, `Note: …` if present), plus `Update: …` styled like the note, so the deck's optional sixth field isn't lost, and `Clue: …` (0.10.0) in the note's style right under the keyword: Anki shows the clue on the front, which the app doesn't have, and search finds cards by their clue. "[no story]" is shown as written (George's choice). Inline Markdown: `**bold**`, `_italic_`, `*italic*` (also inside a word: `*gold*fish`), code, links and hard newlines. A kanji with no card yet shows just the drawing and keyword. Styling follows `rtk-mockup.html` (20 px, line-height 1.5, centered, 8em drawing, uppercase bold keyword), without night mode or the mock frame.
 - Opening a card moves the focus to "‹ Results" only when it was opened with the keyboard (0.9.3); after a tap, the focus ring was just noise.
 - **Back to the results:** a "‹ Results" bar on the card, and opening a card pushes a history entry (`#rtk/可`) so Android's back gesture returns to the list (and doesn't leave the app). The card is an overlay, so the list keeps its scroll position. A card shown from the URL (refresh, bookmark, back/forward) doesn't push an entry; if there's no results entry to go back to, "‹ Results" just shows the results. A link to a card before the RTK files are on the device opens it once they've been fetched; a link to a kanji that isn't in them searches for it instead.
 - **KanjiVG:** `kanjivg/` holds the 2200 SVGs for the RTK kanji from `kanjivg-20260714-main.zip`, named by zero-padded hex code point (`04e00.svg`), as KanjiVG ships them. The script is loaded with `defer` and configured on its `<script>` tag (`data-base-path="kanjivg" data-filename-format="hex" data-filename-prefix=""`); `kanjivgAnimate({ root })` is called on the card; tapping the drawing replays it. If an SVG is missing, the character is shown in Klee One. KanjiVG is CC BY-SA 3.0, credited in Settings → About.
-- **Klee One** SemiBold (`fonts/KleeOne-SemiBold.woff2`, 2.9 MB, OFL) is declared with a `unicode-range` for kana and kanji only, so Latin text stays in the system font (as in George's Ghostty setup). The font and SVGs aren't in the service worker's `SHELL`; they're cached on first use. Subsetting the font (e.g. `pyftsubset`) to the characters in use would cut it to a few hundred KB if the first load is ever a problem.
+- **Klee One** SemiBold (`fonts/KleeOne-SemiBold.woff2`, 2.9 MB, OFL) is declared with a `unicode-range` for kana and kanji only, so Latin text stays in the system font (as in George's Ghostty setup). Since 0.10.0 it's first in every font stack, so all Japanese text in the app (list items, dialogs, help, the 済 seal) is in Klee One, not just the RTK page. The font and SVGs aren't in the service worker's `SHELL`; they're cached on first use. Subsetting the font (e.g. `pyftsubset`) to the characters in use would cut it to a few hundred KB if the first load is ever a problem.
 - Three tabs only just fit at 412 px; below 400 px the tab and icon padding shrinks.
 
 ### Testing
@@ -157,7 +161,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - Assert on what matters to George: the exact text of the files pushed to GitHub, and what the app shows.
   - Use the fake clock for anything time-based (6-hour groups, RTK checks, the 60 s push delay) rather than waiting.
   - Old local-data formats are tested by seeding localStorage with what that version saved (`test_sync.py`).
-  - `test_lists.py`: groups, the darker rule, edit/delete/done/undo/move, Enter for a new row, menus, swipes and edits while a sync changes the list, clicking another row while editing, the pad. `test_sync.py`: pull, merge (including repeated lines), 409 retry, file creation, no-op pushes skipped, persistence across reloads, the 60 s push, data saved by older versions, offline and unreachable vs real errors, failed saves. `test_rtk.py`: search, groups, card contents, back button and gesture, focus, check frequency and ETags, offline, settings. `test_offline.py`: the service worker (its own context, with service workers allowed): opening offline, and a fetch slower than the timeout with nothing cached.
+  - `test_lists.py`: groups, the darker rule, edit/delete/done/undo/move, Enter for a new row, menus, swipes and edits while a sync changes the list, clicking another row while editing, the pad. `test_sync.py`: pull, merge (including repeated lines), 409 retry, file creation, no-op pushes skipped, persistence across reloads, the 60 s push, data saved by older versions, offline and unreachable vs real errors, failed saves. `test_rtk.py`: search, groups, card contents, back button and gesture, focus, check frequency and ETags, offline, settings. `test_flow.py`: tapping a forgotten word, the Done list, what tapping the cloud says. `test_offline.py`: the service worker (its own context, with service workers allowed): opening offline, and a fetch slower than the timeout with nothing cached.
   - `App.offline()` cuts the connection (GitHub requests aborted and the browser offline); `App.swipe()` drags a row sideways.
 - Bugs the end-to-end tests found when they were written (0.9.1):
   - The Kanji page's *Edit* never saved: `ui.js` set `dlg.onclick = (e) => cond && dlg.close()`, and an `on…` handler that returns `false` cancels the event, so the *Save* click never submitted the form. Use block bodies for `on…` handlers.
@@ -173,6 +177,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - The service worker gave up after 3 s even with nothing cached (e.g. the 2.9 MB font on a slow connection), and the late response was never cached.
   - A `pointercancel` drew the stroke's last segment to its position, which may be (0, 0).
   - A failing localStorage save (storage full) threw out of the event handler, so e.g. the add box did nothing, with no explanation.
+  - (0.10.0) Opening a card with Enter on a result row: the key's default action then pressed "‹ Results", which had just been given the focus, closing the card again. The keydown's default is now prevented.
 
 ### Updates without losing state
 - `sw.js` is network-first (3 s timeout, then the cache). When online, the latest deployed version is always used, so there's no cache version number to bump on deploy. Offline, the cached copy is used. With nothing cached it waits for the network however long it takes, and responses are cached even if they arrive after the timeout (0.9.3).
@@ -192,11 +197,12 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - The drawing pad is plain white with no guides. (A practice square with a dashed 十 guide was tried in 0.5.0 and removed at George's request.)
 - Swiping a correction reveals a 済 ("done") seal. "Maybe" sits on faintly tinted paper, with a muted heading, to show it's lower priority.
 - Line-style SVG icons: a cloud with a state mark for sync, sliders for settings.
-- System fonts only (Roboto and Noto Sans CJK on Android). Sentence-case headings, no all-caps labels.
+- System fonts for Latin text (Roboto on Android), Klee One for Japanese (see *RTK lookup*). Sentence-case headings, no all-caps labels.
+- The status bar (`theme-color` in `index.html` and the manifest) is the top bar's red, `#b5162b` (0.10.0; it was `#c8102e`, so Android showed two different reds).
 - Screenshots were dropped (0.9): keeping them in step with the app was more trouble than they were worth.
 
 ### Icon
-- A daruma doll with one eye painted in. Traditionally you paint one eye when you set a goal and the other when you achieve it. The belly has 学 in gold, on a cream background (`#f3ead7`, also the splash background). Theme colour `#c8102e`.
+- A daruma doll with one eye painted in. Traditionally you paint one eye when you set a goal and the other when you achieve it. The belly has 学 in gold, on a cream background (`#f3ead7`, also the splash background). The icon's red is `#c8102e`; the theme colour is the top bar's `#b5162b` (see *Visual design*).
 - Source: `design/icon.svg`, with a transparent background. `design/render-icons.sh` renders the PNGs with headless Chrome:
   - `icon-192/512.png` (`any`): transparent.
   - `favicon.png` (96 px): transparent, cropped to the daruma so it's legible in a browser tab.

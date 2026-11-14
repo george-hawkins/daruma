@@ -7,7 +7,7 @@ import { newItem, endsGroup, locate } from './markdown.js';
 // Brush diameter as a fraction of the drawing area's shorter side.
 const BRUSH = 0.035;
 
-export function initKanji(doc) {
+export function initKanji(doc, { lookUp }) {
   const page = document.getElementById('page-kanji');
   const list = document.getElementById('kanji-list');
   const form = document.getElementById('kanji-add-form');
@@ -20,7 +20,7 @@ export function initKanji(doc) {
     const items = doc.data.items;
     list.replaceChildren(...items.map((it, i) => {
       const li = el('li', endsGroup(items, i) ? 'group-end' : null, it.text);
-      gestures(li, { onLongPress: () => itemMenu(i) });
+      gestures(li, { onTap: () => lookUp(it.text), onLongPress: () => itemMenu(i) });
       return li;
     }));
   }

@@ -1,7 +1,7 @@
 // Run with: node --test test/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, parseDeck, buildIndex, classify, search, cardFor, renderInline } from '../js/rtkdata.js';
+import { parseCsv, parseDeck, buildIndex, classify, search, cardFor, renderInline, exactKeyword, addRecent } from '../js/rtkdata.js';
 
 const CSV = [
   'frame,kanji,keyword,british_english,usual_form',
@@ -126,7 +126,8 @@ test('deck results carry the frame from the index', () => {
 });
 
 test('cardFor: a kanji without a card yet has no story or note', () => {
-  assert.deepEqual(cardFor(index, '缶'), { Kanji: '缶', Keyword: 'tin can', Story: '', Note: '', Update: '', frame: '2116' });
+  assert.deepEqual(cardFor(index, '缶'), { Kanji: '缶', Keyword: 'tin can', Clue: '', Story: '', Note: '', Update: '', frame: '2116' });
+  assert.equal(cardFor(index, '一').Clue, 'not numeral I');
   assert.equal(cardFor(index, '可').Update, '**can** is hard to include in stories.');
 });
 
@@ -138,4 +139,17 @@ test('renderInline', () => {
   assert.equal(renderInline('_horizon (floor)_ and **Can** I?'), '<i>horizon (floor)</i> and <b>Can</b> I?');
   assert.equal(renderInline('see [KanjiVG](https://kanjivg.tagaini.net) and `code`'),
     'see <a href="https://kanjivg.tagaini.net" target="_blank" rel="noopener">KanjiVG</a> and <code>code</code>');
+});
+
+test('exactKeyword: the one kanji whose keyword is exactly the text', () => {
+  assert.equal(exactKeyword(index, 'Can'), '可'); // not "tin can"
+  assert.equal(exactKeyword(index, ' tin  can '), '缶');
+  assert.equal(exactKeyword(index, 'firefly'), '蛍'); // British English
+  assert.equal(exactKeyword(index, 'mouth'), null); // only in a story
+  assert.equal(exactKeyword(index, ''), null);
+});
+
+test('addRecent: newest first, no repeats, at most 10', () => {
+  assert.deepEqual(addRecent(['a', 'b', 'c'], 'b'), ['b', 'a', 'c']);
+  assert.deepEqual(addRecent([...'0123456789'], 'x'), ['x', ...'012345678']);
 });

@@ -19,7 +19,7 @@
 }
 
 /* Klee One (a textbook-style hand) for Japanese only: the unicode-range
-   leaves Latin text to the system font. Used by the RTK page. */
+   leaves Latin text to the system font. First in every font stack. */
 @font-face {
   font-family: "Klee One";
   src: url("fonts/KleeOne-SemiBold.woff2") format("woff2");
@@ -37,7 +37,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  font: 16px/1.4 system-ui, -apple-system, Roboto, "Noto Sans JP", "Hiragino Sans", sans-serif;
+  font: 16px/1.4 "Klee One", system-ui, -apple-system, Roboto, "Noto Sans JP", "Hiragino Sans", sans-serif;
   background: var(--paper);
   color: var(--ink);
   overscroll-behavior: none;
@@ -166,7 +166,8 @@ main { flex: 1; min-height: 0; position: relative; }
 #page-kanji.list-hidden #kanji-side { display: none; }
 #kanji-side .add-form::before { left: 10px; }
 #kanji-side .add-form input { padding-left: 28px; }
-#kanji-list li { padding: 12px 12px; overflow-wrap: anywhere; }
+#kanji-list li { padding: 12px 12px; overflow-wrap: anywhere; cursor: pointer; }
+#kanji-list li:active { background: var(--rule); }
 #kanji-list:empty::before { padding: 14px 12px; font-size: 14px; }
 
 #kanji-pad { flex: 1; position: relative; }
@@ -211,6 +212,9 @@ main { flex: 1; min-height: 0; position: relative; }
 #clist-maybe { flex: 1; background: var(--paper-later); border-top: 1px solid var(--rule-strong); }
 
 .clist h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   margin: 0;
   padding: 14px 16px 6px;
   font-size: 18px;
@@ -219,6 +223,9 @@ main { flex: 1; min-height: 0; position: relative; }
 }
 #clist-maybe h2 { font-size: 16px; color: var(--muted); }
 .count { margin-left: 4px; font-weight: 400; color: var(--muted); }
+#show-done { align-self: center; }
+.done-count { font-weight: 400; color: var(--muted); }
+.done-count:empty { display: none; }
 
 .row { position: relative; overflow: hidden; touch-action: pan-y; }
 #clist-maybe .row-inner { background: var(--paper-later); }
@@ -317,6 +324,21 @@ main { flex: 1; min-height: 0; position: relative; }
 .rtk-table tr.hit { cursor: pointer; }
 .rtk-table tr.hit:active td { background: var(--rule); }
 
+.rtk-table tr.more td { padding: 0; border-bottom: 1px solid var(--rule); }
+.rtk-table tr.more button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: var(--red);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+}
+.group-deck tr.more td { background: #fcf7e9; border-bottom-color: #f1e3bd; box-shadow: inset 3px 0 0 var(--gold); }
+.group-deck tr.more button { color: #8a6a1f; }
+
 .group-title th {
   padding: 16px 12px 6px;
   text-align: left;
@@ -380,6 +402,7 @@ main { flex: 1; min-height: 0; position: relative; }
 .rtk-card .kanjivg-animate svg { width: 100%; height: 100%; fill: initial; stroke: none; stroke-width: 1; stroke-linecap: butt; stroke-linejoin: miter; }
 .rtk-card .kanjivg-animate.no-svg { width: auto; height: auto; font-size: 6em; line-height: 1.3; }
 .rtk-card .keyword { margin-top: 0.3em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.02em; }
+.rtk-card .clue { font-size: 0.85em; color: #555; }
 .rtk-card .story { margin-top: 0.8em; }
 .rtk-card .note { margin-top: 0.8em; font-size: 0.85em; color: #555; }
 .rtk-card a { color: var(--red); }
@@ -407,7 +430,7 @@ main { flex: 1; min-height: 0; position: relative; }
   width: 100%;
   margin-top: 2px;
   padding: 8px 0;
-  font: 16px/1.4 system-ui, Roboto, sans-serif;
+  font: 16px/1.4 "Klee One", system-ui, Roboto, sans-serif;
   color: var(--ink);
   border: 0;
   border-bottom: 1px solid var(--rule-strong);
@@ -442,7 +465,7 @@ main { flex: 1; min-height: 0; position: relative; }
 #set-result:empty { display: none; }
 #set-details {
   margin: 12px 0 0;
-  font: 12px/1.5 ui-monospace, "Roboto Mono", Menlo, monospace;
+  font: 12px/1.5 ui-monospace, "Roboto Mono", Menlo, "Klee One", monospace;
   color: #555;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -516,6 +539,9 @@ form .dlg-title { border-bottom: 0; padding-bottom: 4px; }
 .dlg-row .dlg-btn:first-child { color: var(--muted); }
 
 dialog.wide { width: min(94vw, 520px); }
+.dlg-pick { display: flex; align-items: baseline; gap: 12px; overflow-wrap: anywhere; }
+.dlg-note { flex: none; margin-left: auto; font-size: 13px; color: var(--muted); }
+.dlg-empty { margin: 0; padding: 14px 18px; color: var(--muted); font-size: 14px; }
 .help { padding: 4px 20px 0; font-size: 15px; line-height: 1.5; }
 .help h2 { margin: 16px 0 4px; font-size: 16px; color: var(--red); }
 .help ul { margin: 0; padding-left: 18px; }

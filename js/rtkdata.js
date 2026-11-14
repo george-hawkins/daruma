@@ -149,19 +149,31 @@ export function search(index, query) {
 }
 
 // The fields to show for a result. A kanji that's in the index but has no
-// card yet gets a card without Story, Note or Update.
+// card yet gets a card without Clue, Story, Note or Update.
 export function cardFor(index, kanji) {
   const card = index.cardByKanji.get(kanji);
   const row = index.rowByKanji.get(kanji);
   return {
     Kanji: kanji,
     Keyword: card?.Keyword || row?.keyword || '',
+    Clue: card?.Clue || '',
     Story: card?.Story || '',
     Note: card?.Note || '',
     Update: card?.Update || '',
     frame: row?.frame ?? '',
   };
 }
+
+// The kanji whose keyword (or British or usual form) is exactly `text`,
+// ignoring case and spacing, if exactly one is; else null.
+export function exactKeyword(index, text) {
+  const t = halfWidth(text).trim().replace(/\s+/g, ' ').toLowerCase();
+  const hits = t ? index.rows.filter((r) => [r.keyword, r.british_english, r.usual_form].some((v) => v?.toLowerCase() === t)) : [];
+  return hits.length === 1 ? hits[0].kanji : null;
+}
+
+// The recently opened cards, newest first, with `kanji` added at the top.
+export const addRecent = (recent, kanji, max = 10) => [kanji, ...recent.filter((k) => k !== kanji)].slice(0, max);
 
 const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 

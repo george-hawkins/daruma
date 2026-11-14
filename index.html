@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#c8102e">
+  <meta name="theme-color" content="#b5162b">
   <title>Daruma</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" href="icons/favicon.png">
@@ -52,7 +52,8 @@
 
     <section id="page-corrections" class="page">
       <div class="clist" id="clist-corrections" data-key="corrections">
-        <h2>Corrections <span class="count"></span></h2>
+        <h2>Corrections <span class="count"></span>
+          <button type="button" id="show-done" class="small">Done <span class="done-count"></span></button></h2>
         <form class="add-form">
           <input type="text" placeholder="Add a correction" enterkeyhint="enter" autocomplete="off">
         </form>
@@ -136,7 +137,7 @@
     <h2>Kanji</h2>
     <ul>
       <li>Type a word and press Enter to add it to the top of the list.</li>
-      <li>Long-press a word to edit or delete it.</li>
+      <li>Tap a word to look it up on the RTK page. Long-press it to edit or delete it.</li>
       <li>Draw with your finger. <b>Clear</b> wipes the pad.</li>
       <li>The arrow at the top of the pad hides or shows the list.</li>
     </ul>
@@ -146,17 +147,19 @@
       <li>Tap an item to edit it. Enter starts a new item below it; an item you empty is removed.</li>
       <li>Swipe an item left or right to mark it done. <b>Undo</b> appears for a few seconds.</li>
       <li>Long-press an item to move it to the other list, mark it done or delete it.</li>
+      <li><b>Done</b> at the top lists what you've marked done. Tap an item to move it back or delete it.</li>
     </ul>
     <h2>RTK</h2>
     <ul>
-      <li>Type a frame number, a kanji or a keyword. Matches in the keyword index come first, then cards that mention it anywhere (on a tinted background).</li>
+      <li>Type a frame number, a kanji or a keyword. Matches in the keyword index come first, then cards that mention it anywhere (on a tinted background). Each shows its first 20; <b>Show all</b> shows the rest.</li>
+      <li>With nothing typed, the cards you opened recently are listed.</li>
       <li>Tap a row to see its card, and tap the kanji to watch it being drawn. <b>Results</b> or the back gesture returns to the list.</li>
       <li>The address of a card (ending <code>#rtk/可</code>) can be bookmarked, and refreshing keeps the card open.</li>
       <li>The RTK files are read-only. They're checked for changes when you tap the cloud, and otherwise every 6 hours.</li>
     </ul>
     <h2>Saving and sync</h2>
     <ul>
-      <li>Everything is saved on this phone as you type. It's pushed to GitHub when you leave the app, a minute after your last change, or when you tap the cloud.</li>
+      <li>Everything is saved on this phone as you type. It's pushed to GitHub when you leave the app, a minute after your last change, or when you tap the cloud (which then says how it went).</li>
       <li>Cloud with a tick: everything is on GitHub. With an arrow: changes are waiting to be pushed. Crossed out: offline (or GitHub can't be reached), or sync isn't set up yet; everything is kept on this phone meanwhile. With <b>!</b>: something needs your attention; tap it.</li>
       <li>Using Daruma on more than one device, or editing the files on GitHub? Each copy picks up the latest version when it's opened or comes back to the front. If both have changed, the changes are merged.</li>
     </ul>

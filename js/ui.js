@@ -20,8 +20,12 @@ export function el(tag, className, text) {
 }
 
 let snackTimer = null;
+let notices = 0;
+// How many notices have been shown so far.
+export const noticeCount = () => notices;
 
 export function notify(message, action = null, ms = 5000) {
+  notices++;
   const bar = document.getElementById('snackbar');
   const btn = document.getElementById('snackbar-action');
   document.getElementById('snackbar-text').textContent = message;
@@ -87,6 +91,27 @@ export function showHelp(template) {
     close.onclick = () => done(null);
     row.append(close);
     dlg.append(body, row);
+  }, 'wide');
+}
+
+// A list to pick from: items are [label, note, value] (the note is shown
+// muted beside the label). Resolves to the chosen value or null.
+export function pickFrom(title, items, { empty = 'Nothing here', footer = '' } = {}) {
+  return openDialog((dlg, done) => {
+    dlg.append(el('p', 'dlg-title', title));
+    if (!items.length) dlg.append(el('p', 'dlg-empty', empty));
+    for (const [label, note, value] of items) {
+      const b = el('button', 'dlg-btn dlg-pick', label);
+      if (note) b.append(el('span', 'dlg-note', note));
+      b.onclick = () => done(value);
+      dlg.append(b);
+    }
+    if (footer) dlg.append(el('p', 'dlg-empty', footer));
+    const row = el('div', 'dlg-row');
+    const close = el('button', 'dlg-btn', 'Close');
+    close.onclick = () => done(null);
+    row.append(close);
+    dlg.append(row);
   }, 'wide');
 }
 

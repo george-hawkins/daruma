@@ -9,7 +9,7 @@ import { initCorrections } from './corrections.js';
 import { initRtk } from './rtk.js';
 import { RtkSource } from './rtksource.js';
 import { initSettings } from './settings.js';
-import { notify, showHelp, hashFor, parseHash } from './ui.js';
+import { notify, noticeCount, showHelp, hashFor, parseHash } from './ui.js';
 
 const kanjiDoc = new SyncedDoc('kanji', {
   urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3, format: 2, upgrade: upgradeList,
@@ -50,14 +50,26 @@ const syncer = new Syncer([kanjiDoc, correctionsDoc], {
     statusBtn.setAttribute('aria-label', label);
   },
 });
-statusBtn.addEventListener('click', () => {
-  notify(statusLabel);
-  syncer.sync({ force: true });
+// Tapping the cloud syncs, then says how it went, unless something else was
+// shown meanwhile (e.g. "Merged changes…", or an Undo).
+statusBtn.addEventListener('click', async () => {
+  notify('Syncing…');
+  const shown = noticeCount();
+  await syncer.sync({ force: true });
+  if (noticeCount() === shown) notify(statusLabel);
 });
 document.getElementById('help-btn').addEventListener('click', () => showHelp(document.getElementById('help')));
 
 const pages = {
-  kanji: initKanji(kanjiDoc),
+  // Tapping a word looks it up on the RTK page. That's a step forward (unlike
+  // switching tabs), so it adds a history entry: back returns to the list.
+  kanji: initKanji(kanjiDoc, {
+    lookUp(text) {
+      history.pushState(null, '', hashFor('rtk'));
+      show('rtk', '');
+      pages.rtk.lookUp(text);
+    },
+  }),
   corrections: initCorrections(correctionsDoc),
   rtk: (rtkPage = initRtk(rtkSource)),
   settings: initSettings(syncer),
