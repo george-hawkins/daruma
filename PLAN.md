@@ -12,8 +12,8 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] Corrections activity
 - [x] Icons (192/512 `any`, 512 `maskable`, 180 Apple touch icon) from `design/icon.svg`
 - [x] Tested in headless Chrome (drawing, add, swipe-to-done + undo, tap-to-edit, Enter for new line, sync scenarios against a mocked GitHub API)
-- [ ] GitHub Pages enabled (George, see below)
-- [ ] Notes repo + token created and entered in Settings (George)
+- [x] GitHub Pages enabled (George): https://george-hawkins.github.io/daruma/
+- [x] Notes repo (`daruma-filestore`) + token created and entered in Settings (George)
 - [x] Multi-instance sync with three-way merge (0.7). Unit tests: `node --test` (in `test/`).
 - [x] RTK lookup page (0.8): read-only keyword index and Anki deck from `anki-decks`, KanjiVG stroke order, Klee One. Unit tests in `test/rtk.test.mjs`; tested in headless Chrome against the real files.
 - [x] Timestamp groups in the files (0.9). Unit tests in `test/markdown.test.mjs`.
