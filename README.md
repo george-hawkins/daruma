@@ -4,7 +4,7 @@
 
 Daruma is a small installable web app (a PWA) for Japanese study chores. It runs entirely in the browser, keeps everything on the device first, and syncs its data to plain Markdown files in a GitHub repo of your choice.
 
-The app lives at https://george-hawkins.github.io/japanese-study-app/
+The app lives at https://george-hawkins.github.io/daruma/
 
 The icon is a daruma doll with only one eye painted in. Traditionally you paint in one eye when you set a goal and the other when you achieve it.
 

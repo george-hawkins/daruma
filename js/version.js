@@ -1,3 +1,3 @@
 // Bump on every change that's pushed, so the running version can be checked
 // in Settings → About.
-export const VERSION = '0.8.0';
+export const VERSION = '0.8.1';

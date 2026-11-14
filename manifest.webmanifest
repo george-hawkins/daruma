@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Daruma",
   "short_name": "Daruma",
-  "description": "Forgotten kanji and corrections notes",
+  "description": "Forgotten kanji, corrections notes and RTK lookup",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

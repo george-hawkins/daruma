@@ -1,6 +1,6 @@
 # Daruma: plan
 
-Daruma (the repo is `japanese-study-app`) is a small installable web app (PWA) for Japanese study chores. This is a living document. It records the requirements, decisions and status so that work can carry on across separate sessions. Update it whenever something is decided or built.
+Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small installable web app (PWA) for Japanese study chores. This is a living document. It records the requirements, decisions and status so that work can carry on across separate sessions. Update it whenever something is decided or built.
 
 ## Status
 
@@ -149,7 +149,7 @@ Daruma (the repo is `japanese-study-app`) is a small installable web app (PWA) f
 
 ### GitHub Pages (once)
 1. Repo **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch `master`, folder `/ (root)`, Save.
-2. The site is at `https://george-hawkins.github.io/japanese-study-app/`. Each push to `master` redeploys it within a minute or two.
+2. The site is at `https://george-hawkins.github.io/daruma/`. Each push to `master` redeploys it within a minute or two.
 3. `.nojekyll` is present, so files are served as-is. All paths in the app are relative because it's served from a sub-path.
 
 ### Notes repo and token (once)
