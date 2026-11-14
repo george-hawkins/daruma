@@ -21,7 +21,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] Page and RTK card in the URL (0.9.2): `#rtk/可` survives a refresh and can be bookmarked.
 - [x] Review (0.9.3): fixes for merging repeated lines, offline shown as an error, clicks lost while editing, swipes and edits during a sync, no-op commits, slow first loads with the service worker, storage-full errors. See *Testing* for the list.
 - [x] UX changes agreed after the review (0.10.0): tap a forgotten word to look it up, a Done list with restore, the Clue on RTK cards, recently viewed cards, results capped at 20, the cloud reports how a sync went, status bar colour, Klee One for all Japanese text.
-- [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
+- [x] Tried on the phone (2026-11-14): the brush width (`BRUSH` in `js/kanji.js`) is fine as it is.
 
 ## Requirements (the "what")
 
@@ -122,7 +122,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - Tap an entry → the RTK page searches for it (0.10.0), opening the card straight away if exactly one kanji has it as its keyword, British form or usual form (`exactKeyword` in `rtkdata.js`, ignoring case). This is a step forward rather than a tab switch, so it pushes a history entry: back returns from the card to the results, and from the results to the list.
 - ◀/▶ button hides or shows the list (remembered). The scroll position is saved and restored.
 - Canvas: Pointer Events, `touch-action: none`, high-DPI, coalesced events plus quadratic smoothing. Only the first finger draws.
-- Brush diameter = `BRUSH` (0.035) × the canvas's shorter side. The reference image is ~4.9 % of the kanji's size, and this gives ~4 %.
+- Brush diameter = `BRUSH` (0.035) × the canvas's shorter side. The reference image is ~4.9 % of the kanji's size, and this gives ~4 %. Confirmed on the phone (2026-11-14).
 - The drawing is **not** preserved (George: drawings are throwaway). It does survive the canvas resizing, e.g. when the keyboard opens.
 
 ### Corrections
