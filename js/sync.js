@@ -30,12 +30,15 @@ const PUSH_ATTEMPTS = 3;
 const copy = (x) => JSON.parse(JSON.stringify(x));
 
 export class SyncedDoc {
-  constructor(name, { urlKey, empty, parse, serialize, merge3, count }) {
+  constructor(name, { urlKey, empty, parse, serialize, merge3, count, upgrade = (d) => d }) {
     Object.assign(this, { name, urlKey, empty, parse, serialize, merge3, count });
     // state: { data, dirty, rev, syncedUrl, sha, base }. `base` is the content
     // at `sha`; docs saved by versions before 0.7 don't have it.
     this.state = load(`doc:${name}`, null) ?? { data: empty(), dirty: false, sha: null, syncedUrl: null, rev: 0 };
     delete this.state.conflict; // from 0.6
+    // Older data formats (e.g. items as plain strings before 0.9).
+    this.state.data = upgrade(this.state.data);
+    if (this.state.base) this.state.base = upgrade(this.state.base);
     this.listeners = [];
   }
 

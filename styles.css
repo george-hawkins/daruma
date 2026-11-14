@@ -115,6 +115,8 @@ main { flex: 1; min-height: 0; position: relative; }
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+/* The last row of a timestamp group (see markdown.js): a slightly darker rule. */
+.list li.group-end { border-bottom-color: var(--rule-strong); }
 .list:empty::before {
   content: attr(data-empty);
   display: block;
@@ -361,7 +363,9 @@ main { flex: 1; min-height: 0; position: relative; }
   overflow-wrap: anywhere;
 }
 .rtk-card .kanjivg-animate { display: inline-block; width: 8em; height: 8em; }
-.rtk-card .kanjivg-animate svg { width: 100%; height: 100%; }
+/* Undo the app's line-icon defaults (svg rule above): KanjiVG's stroke numbers
+   set only their fill, so they'd inherit a thick black outline. */
+.rtk-card .kanjivg-animate svg { width: 100%; height: 100%; fill: initial; stroke: none; stroke-width: 1; stroke-linecap: butt; stroke-linejoin: miter; }
 .rtk-card .kanjivg-animate.no-svg { width: auto; height: auto; font-size: 6em; line-height: 1.3; }
 .rtk-card .keyword { margin-top: 0.3em; text-transform: uppercase; font-weight: bold; letter-spacing: 0.02em; }
 .rtk-card .story { margin-top: 0.8em; }

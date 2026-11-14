@@ -16,6 +16,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [ ] Notes repo + token created and entered in Settings (George)
 - [x] Multi-instance sync with three-way merge (0.7). Unit tests: `node --test` (in `test/`).
 - [x] RTK lookup page (0.8): read-only keyword index and Anki deck from `anki-decks`, KanjiVG stroke order, Klee One. Unit tests in `test/rtk.test.mjs`; tested in headless Chrome against the real files.
+- [x] Timestamp groups in the files (0.9). Unit tests in `test/markdown.test.mjs`.
 - [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
 
 ## Requirements (the "what")
@@ -63,24 +64,42 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   ```
   # Forgotten kanji
 
+  ### 2026-11-15T09:30:00Z
+
   * apply
+
+  ### 2026-11-14T12:00:00Z
+
   * discard
   ```
 - `corrections.md`:
   ```
   ## Corrections
 
+  ### 2026-11-14T12:00:00Z
+
   * Intelligent clue --> not CLEVER
 
   ## Maybe
+
+  ### 2026-11-14T12:00:00Z
 
   * Switch to Hawaii story for young
 
   ## Done
 
+  ### 2026-11-15T09:30:00Z
+
   * Discard clue: not DISPOSE
   ```
 - Newest first in all lists. Text before the first section and unknown `##` sections are kept verbatim. `*` and `-` bullets are both accepted, and `*` is written.
+- **Timestamp groups** (0.9): within each list (forgotten's single list; Corrections, Maybe and Done separately), items sit under `### <UTC ISO timestamp, to the minute>` headings, newest group first, `###` in both files (George's choice, even though `forgotten.md` has only a `#` title).
+  - An item arriving at the top of a list joins the list's newest group, or starts a new group if that group's heading is more than 6 hours old. "Arriving" means typed in, moved Corrections↔Maybe, or marked done (George's choice: so Done's headings say roughly when things were done). Rows created with Enter while editing join the group of the row above. Undo of "done" puts the item back in its old group. Edited items stay in their group.
+  - The headings aren't shown in the app: the last row of each group has a slightly darker rule (`--rule-strong`).
+  - In the app, items are `{ text, time }` (`time` is the group heading, `''` for items above any heading, e.g. added by hand on GitHub). Empty groups don't exist: a heading is written before its group's first item.
+  - Merging: `mergeTimed` in `js/merge.js` merges the texts with `merge3` as before, then gives each item a time from a side where it's in the list it ended up in (a known time over none, then this device's), and sorts each list by group, newest first (`''` first), keeping the merged order within a group.
+  - Data saved on the device by older versions (items as plain strings) is upgraded on load (`upgrade` option of `SyncedDoc`); such items have no time until the next sync takes it from GitHub.
+  - The existing files in `daruma-filestore` were rewritten by hand with `2026-11-14T12:00:00Z` for all existing entries.
 
 ### Navigation
 - A top bar with tabs **Kanji | Corrections**, the sync indicator, and ⚙ for Settings. There's no hamburger menu until there's more to put in it.
@@ -135,7 +154,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - Swiping a correction reveals a 済 ("done") seal. "Maybe" sits on faintly tinted paper, with a muted heading, to show it's lower priority.
 - Line-style SVG icons: a cloud with a state mark for sync, sliders for settings.
 - System fonts only (Roboto and Noto Sans CJK on Android). Sentence-case headings, no all-caps labels.
-- Screenshots at Pixel 8a size (412×915 CSS px, DPR 2.625) are in `design/screenshots/`.
+- Screenshots were dropped (0.9): keeping them in step with the app was more trouble than they were worth.
 
 ### Icon
 - A daruma doll with one eye painted in. Traditionally you paint one eye when you set a goal and the other when you achieve it. The belly has 学 in gold, on a cream background (`#f3ead7`, also the splash background). Theme colour `#c8102e`.

@@ -74,11 +74,13 @@ test('whitespace and empty rows are normalised', () => {
 });
 
 test('mergeSections3 keeps GitHub preamble and extra sections', () => {
-  const remote = { ...emptySections(), preamble: '# Notes', extra: [{ title: 'Other', lines: ['x'] }], corrections: ['a'] };
-  const local = { ...emptySections(), corrections: ['b', 'a'] };
-  const base = { ...emptySections(), corrections: ['a'] };
+  const T = '2026-11-14T12:00:00Z';
+  const items = (...texts) => texts.map((text) => ({ text, time: T }));
+  const remote = { ...emptySections(), preamble: '# Notes', extra: [{ title: 'Other', lines: ['x'] }], corrections: items('a') };
+  const local = { ...emptySections(), corrections: items('b', 'a') };
+  const base = { ...emptySections(), corrections: items('a') };
   const r = mergeSections3(base, local, remote);
   assert.equal(r.preamble, '# Notes');
   assert.deepEqual(r.extra, remote.extra);
-  assert.deepEqual(r.corrections, ['b', 'a']);
+  assert.deepEqual(r.corrections, items('b', 'a'));
 });

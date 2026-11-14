@@ -53,3 +53,27 @@ export function merge3(base, local, remote, keys) {
   }
   return result;
 }
+
+// The same merge for lists of { text, time } items, where `time` is the
+// timestamp heading of the item's group ('' for an item above any heading).
+// Texts are merged as above. Each item then takes its time from a side where
+// it's in the list it ended up in (a non-empty time over an empty one, then
+// this device's), and each list is regrouped newest group first ('' counts as
+// newest, since such items can only be above the first heading), keeping the
+// merged order within a group.
+export function mergeTimed(base, local, remote, keys) {
+  const texts = (doc) => Object.fromEntries(keys.map((k) => [k, (doc?.[k] ?? []).map((it) => it.text)]));
+  const merged = merge3(texts(base), texts(local), texts(remote), keys);
+  const timeIn = (doc, k) => new Map((doc?.[k] ?? []).map((it) => [it.text.replace(/\s+/g, ' ').trim(), it.time]));
+  const result = {};
+  for (const k of keys) {
+    const [l, r, b] = [timeIn(local, k), timeIn(remote, k), timeIn(base, k)];
+    const items = merged[k].map((text, i) => {
+      const options = [l.get(text), r.get(text), b.get(text)].filter((t) => t !== undefined);
+      return { text, time: options.find(Boolean) ?? '', i };
+    });
+    items.sort((x, y) => (x.time === y.time ? x.i - y.i : !x.time ? -1 : !y.time ? 1 : x.time < y.time ? 1 : -1));
+    result[k] = items.map(({ text, time }) => ({ text, time }));
+  }
+  return result;
+}

@@ -2,6 +2,7 @@
 
 import { load, save } from './store.js';
 import { el, gestures, menu, promptText, debounce } from './ui.js';
+import { newItem, endsGroup } from './markdown.js';
 
 // Brush diameter as a fraction of the drawing area's shorter side.
 const BRUSH = 0.035;
@@ -16,22 +17,23 @@ export function initKanji(doc) {
   const restoreScroll = () => (list.scrollTop = load('scroll:kanji', 0));
 
   function render() {
-    list.replaceChildren(...doc.data.items.map((text, i) => {
-      const li = el('li', null, text);
+    const items = doc.data.items;
+    list.replaceChildren(...items.map((it, i) => {
+      const li = el('li', endsGroup(items, i) ? 'group-end' : null, it.text);
       gestures(li, { onLongPress: () => itemMenu(i) });
       return li;
     }));
   }
 
   async function itemMenu(i) {
-    const text = doc.data.items[i];
+    const text = doc.data.items[i].text;
     const choice = await menu(text, [['Edit', 'edit'], ['Delete', 'delete', 'danger'], ['Cancel', null]]);
     if (choice === 'delete') {
       doc.data.items.splice(i, 1);
     } else if (choice === 'edit') {
       const edited = (await promptText('Edit', text))?.trim();
       if (!edited || edited === text) return;
-      doc.data.items[i] = edited;
+      doc.data.items[i].text = edited; // stays in its group
     } else {
       return;
     }
@@ -46,7 +48,7 @@ export function initKanji(doc) {
     e.preventDefault();
     const text = input.value.trim();
     if (text) {
-      doc.data.items.unshift(text);
+      doc.data.items.unshift(newItem(doc.data.items, text));
       doc.changed();
       render();
       list.scrollTop = 0;

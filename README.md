@@ -8,12 +8,6 @@ The app lives at https://george-hawkins.github.io/daruma/
 
 The icon is a daruma doll with only one eye painted in. Traditionally you paint in one eye when you set a goal and the other when you achieve it.
 
-<p>
-  <img src="design/screenshots/kanji.png" alt="Kanji page" width="30%">
-  <img src="design/screenshots/corrections.png" alt="Corrections page" width="30%">
-  <img src="design/screenshots/settings.png" alt="Settings page" width="30%">
-</p>
-
 ## Activities
 
 The ? button in the top bar shows a summary of the gestures below.
@@ -58,25 +52,36 @@ The token is stored only on the device. A token is needed because GitHub doesn't
 - Sync icon: a cloud with a tick (synced), with an arrow (changes waiting to be pushed; it pulses while syncing), crossed out (offline or not set up) or with "!" (needs attention; tap it).
 - You can use Daruma on several devices (e.g. a phone and a laptop browser) and edit the files on GitHub too. Enter the settings on each device. Each copy picks up the latest version when it's opened, comes back to the front, or every few minutes while it's open. If a device has unpushed changes and the file changed elsewhere too, the two are merged item by item: additions, edits, moves and items marked done from both sides are kept.
 
-The files look like this:
+Entries are grouped under UTC timestamps, newest first. A new group starts when an entry arrives in a list (typed in, moved, or marked done) more than 6 hours after that list's newest group began. The app doesn't show the timestamps, only a slightly darker line between groups. The files look like this:
 
 ```markdown
 # Forgotten kanji
 
+### 2026-11-15T09:30:00Z
+
 * apply
+
+### 2026-11-14T12:00:00Z
+
 * discard
 ```
 
 ```markdown
 ## Corrections
 
+### 2026-11-14T12:00:00Z
+
 * Intelligent clue --> not CLEVER
 
 ## Maybe
 
+### 2026-11-14T12:00:00Z
+
 * Switch to Hawaii story for young
 
 ## Done
+
+### 2026-11-15T09:30:00Z
 
 * Discard clue: not DISPOSE
 ```

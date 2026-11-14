@@ -1,6 +1,9 @@
 import { load, save } from './store.js';
 import { SyncedDoc, Syncer } from './sync.js';
-import { parseList, serializeList, emptyList, mergeList3, parseSections, serializeSections, emptySections, mergeSections3 } from './markdown.js';
+import {
+  parseList, serializeList, emptyList, mergeList3, upgradeList,
+  parseSections, serializeSections, emptySections, mergeSections3, upgradeSections,
+} from './markdown.js';
 import { initKanji } from './kanji.js';
 import { initCorrections } from './corrections.js';
 import { initRtk } from './rtk.js';
@@ -9,11 +12,11 @@ import { initSettings } from './settings.js';
 import { notify, showHelp } from './ui.js';
 
 const kanjiDoc = new SyncedDoc('kanji', {
-  urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3,
+  urlKey: 'forgottenUrl', empty: emptyList, parse: parseList, serialize: serializeList, merge3: mergeList3, upgrade: upgradeList,
   count: (d) => d.items.length,
 });
 const correctionsDoc = new SyncedDoc('corrections', {
-  urlKey: 'correctionsUrl', empty: emptySections, parse: parseSections, serialize: serializeSections, merge3: mergeSections3,
+  urlKey: 'correctionsUrl', empty: emptySections, parse: parseSections, serialize: serializeSections, merge3: mergeSections3, upgrade: upgradeSections,
   count: (d) => d.corrections.length + d.maybe.length + d.done.length,
 });
 

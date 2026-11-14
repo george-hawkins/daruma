@@ -3,6 +3,7 @@
 
 import { load, save } from './store.js';
 import { el, gestures, menu, notify, debounce } from './ui.js';
+import { newItem, endsGroup } from './markdown.js';
 
 const KEYS = ['corrections', 'maybe'];
 const TITLES = { corrections: 'Corrections', maybe: 'Maybe' };
@@ -22,18 +23,18 @@ export function initCorrections(doc) {
     for (const key of KEYS) {
       const list = items(key);
       for (let j = list.length - 1; j >= 0; j--) {
-        if (list[j].trim() || (focus && focus.key === key && focus.i === j)) continue;
+        if (list[j].text.trim() || (focus && focus.key === key && focus.i === j)) continue;
         list.splice(j, 1);
         if (focus && focus.key === key && focus.i > j) focus.i--;
       }
-      parts[key].list.replaceChildren(...list.map((text, i) => row(key, i, text)));
+      parts[key].list.replaceChildren(...list.map((it, i) => row(key, i, it.text, endsGroup(list, i))));
       parts[key].count.textContent = list.length || '';
     }
     if (focus) startEdit(focus.key, focus.i);
   }
 
-  function row(key, i, text) {
-    const li = el('li', 'row');
+  function row(key, i, text, groupEnd) {
+    const li = el('li', groupEnd ? 'row group-end' : 'row');
     const bg = el('div', 'row-bg');
     bg.setAttribute('aria-hidden', 'true');
     bg.append(el('span', 'seal', '済'), el('span', 'seal', '済'));
@@ -60,7 +61,7 @@ export function initCorrections(doc) {
     const inner = li.querySelector('.row-inner');
     const form = el('form');
     const input = el('input');
-    input.value = items(key)[i];
+    input.value = items(key)[i].text;
     input.enterKeyHint = 'enter';
     input.autocomplete = 'off';
     form.append(input);
@@ -71,14 +72,14 @@ export function initCorrections(doc) {
     input.setSelectionRange(input.value.length, input.value.length);
 
     input.addEventListener('input', () => {
-      items(key)[i] = input.value;
+      items(key)[i].text = input.value;
       doc.changed();
     });
     // Enter: start a new line below, as in a textarea.
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       if (!input.value.trim()) return input.blur();
-      items(key).splice(i + 1, 0, '');
+      items(key).splice(i + 1, 0, { text: '', time: items(key)[i].time }); // same group
       doc.changed();
       render({ key, i: i + 1 });
     });
@@ -86,17 +87,18 @@ export function initCorrections(doc) {
   }
 
   function markDone(key, i) {
-    const [text] = items(key).splice(i, 1);
-    if (text.trim()) doc.data.done.unshift(text.trim());
+    const [item] = items(key).splice(i, 1);
+    const text = item.text.trim();
+    if (text) doc.data.done.unshift(newItem(doc.data.done, text));
     doc.changed();
     render();
-    if (!text.trim()) return;
+    if (!text) return;
     notify(`Done: ${text}`, {
       label: 'Undo',
       run() {
-        const j = doc.data.done.indexOf(text.trim());
+        const j = doc.data.done.findIndex((it) => it.text === text);
         if (j >= 0) doc.data.done.splice(j, 1);
-        items(key).splice(Math.min(i, items(key).length), 0, text);
+        items(key).splice(Math.min(i, items(key).length), 0, item); // back in its old group
         doc.changed();
         render();
       },
@@ -105,7 +107,7 @@ export function initCorrections(doc) {
 
   async function rowMenu(key, i) {
     const other = KEYS.find((k) => k !== key);
-    const choice = await menu(items(key)[i], [
+    const choice = await menu(items(key)[i].text, [
       [`Move to ${TITLES[other]}`, 'move'],
       ['Mark done', 'done'],
       ['Delete', 'delete', 'danger'],
@@ -113,8 +115,8 @@ export function initCorrections(doc) {
     ]);
     if (choice === 'done') return markDone(key, i);
     if (!choice) return;
-    const [text] = items(key).splice(i, 1);
-    if (choice === 'move') items(other).unshift(text);
+    const [item] = items(key).splice(i, 1);
+    if (choice === 'move') items(other).unshift(newItem(items(other), item.text));
     doc.changed();
     render();
   }
@@ -128,7 +130,7 @@ export function initCorrections(doc) {
       e.preventDefault();
       const text = input.value.trim();
       if (!text) return;
-      items(key).unshift(text);
+      items(key).unshift(newItem(items(key), text));
       doc.changed();
       render();
       list.scrollTop = 0;
