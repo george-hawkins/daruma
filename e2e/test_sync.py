@@ -90,3 +90,59 @@ def test_an_unpushed_change_is_pushed_a_minute_after_the_last_edit(app, files):
     app.advance(61 * 1000)
     app.page.wait_for_function("() => document.getElementById('sync-status').classList.contains('ok')")
     assert files.text(FORGOTTEN) == f"# Forgotten kanji\n\n{NOW}\n\n* later\n"
+
+
+def test_a_keyword_forgotten_again_survives_a_merge(app, files):
+    files.set(FORGOTTEN, f"# Forgotten kanji\n\n{OLD}\n\n* apply\n")
+    app.open()
+    app.add_kanji("apply")
+    files.set(FORGOTTEN, f"# Forgotten kanji\n\n{OLD}\n\n* laptop\n* apply\n")
+    app.sync()
+    assert files.text(FORGOTTEN) == f"# Forgotten kanji\n\n{NOW}\n\n* apply\n\n{OLD}\n\n* laptop\n* apply\n"
+
+
+def test_offline_shows_the_offline_cloud_and_no_error(app, files):
+    app.open()
+    app.offline()
+    app.add_kanji("typed offline")
+    app.sync()
+    assert "offline" in app.page.get_attribute("#sync-status", "class").split()
+    assert "Offline" in app.page.get_attribute("#sync-status", "aria-label")
+    assert "failed" not in app.page.inner_text("#snackbar-text")
+
+
+def test_github_unreachable_while_online_also_counts_as_offline(app, files):
+    app.open()
+    app.page.unroute("https://api.github.com/**")
+    app.page.route("https://api.github.com/**", lambda route: route.abort("connectionrefused"))
+    app.sync()
+    assert "offline" in app.page.get_attribute("#sync-status", "class").split()
+    assert "Can't reach GitHub" in app.page.get_attribute("#sync-status", "aria-label")
+
+
+def test_real_errors_are_still_reported(app, files):
+    app.open(settings={**SETTINGS, "forgottenUrl": "https://github.com/o/notes/blob/main/forgotten.md"})
+    app.page.unroute("https://api.github.com/**")
+    app.page.route("https://api.github.com/**", lambda route: route.fulfill(status=401, json={"message": "Bad credentials"}))
+    app.sync()
+    assert "error" in app.page.get_attribute("#sync-status", "class").split()
+    assert "Bad credentials" in app.page.inner_text("#snackbar-text")
+
+
+def test_nothing_is_pushed_if_github_already_has_it(app, files):
+    app.open()
+    app.add_kanji("oops")
+    app.menu(app.page.locator("#kanji-list li", has_text="oops"), "Delete")
+    app.sync()
+    assert files.puts == []
+    assert "ok" in app.page.get_attribute("#sync-status", "class").split()
+
+
+def test_a_save_that_fails_is_reported(app, files):
+    app.open()
+    app.page.evaluate("() => { Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }; }")
+    app.add_kanji("kept anyway")
+    assert "Couldn't save on this device" in app.page.inner_text("#snackbar-text")
+    assert app.rows("#kanji-list") == ["kept anyway"]
+    app.sync()
+    assert "* kept anyway" in files.text(FORGOTTEN)

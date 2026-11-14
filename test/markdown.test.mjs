@@ -135,3 +135,12 @@ test('locate finds an item again after the list changed, by identity, else by te
   assert.equal(locate([{ text: 'b', time: T1 }], b), 0); // replaced by a sync
   assert.equal(locate([a], b), -1); // gone
 });
+
+test('merge: a keyword forgotten again keeps its new group', () => {
+  const base = parseList(`# F\n\n### ${T1}\n\n* apply\n`);
+  const local = { ...base, items: [{ text: 'apply', time: T3 }, ...base.items] };
+  const remote = parseList(`# F\n\n### ${T1}\n\n* laptop\n* apply\n`);
+  assert.deepEqual(mergeList3(base, local, remote).items, [
+    { text: 'apply', time: T3 }, { text: 'laptop', time: T1 }, { text: 'apply', time: T1 },
+  ]);
+});

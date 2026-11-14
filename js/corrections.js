@@ -27,24 +27,29 @@ export function initCorrections(doc) {
         list.splice(j, 1);
         if (focus && focus.key === key && focus.i > j) focus.i--;
       }
-      parts[key].list.replaceChildren(...list.map((it, i) => row(key, i, it.text, endsGroup(list, i))));
+      parts[key].list.replaceChildren(...list.map((it, i) => row(key, i, it, endsGroup(list, i))));
       parts[key].count.textContent = list.length || '';
     }
     if (focus) startEdit(focus.key, focus.i);
   }
 
-  function row(key, i, text, groupEnd) {
+  function row(key, i, item, groupEnd) {
     const li = el('li', groupEnd ? 'row group-end' : 'row');
     const bg = el('div', 'row-bg');
     bg.setAttribute('aria-hidden', 'true');
     bg.append(el('span', 'seal', '済'), el('span', 'seal', '済'));
-    const inner = el('div', 'row-inner', text);
+    const inner = el('div', 'row-inner', item.text);
     li.append(bg, inner);
     gestures(li, {
       slider: inner,
       onTap: () => startEdit(key, i),
       onLongPress: () => rowMenu(key, i),
-      onSwipe: () => markDone(key, i),
+      // Called after the slide-away animation, by which time a sync may have
+      // changed the list.
+      onSwipe: () => {
+        const j = locate(items(key), item);
+        if (j >= 0) markDone(key, j);
+      },
     });
     return li;
   }
@@ -66,7 +71,7 @@ export function initCorrections(doc) {
     input.autocomplete = 'off';
     form.append(input);
     inner.replaceChildren(form);
-    const token = { key, i };
+    const token = { key, i, input };
     editing = token;
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
@@ -144,7 +149,25 @@ export function initCorrections(doc) {
     list.addEventListener('scroll', debounce(() => save(`scroll:${key}`, list.scrollTop), 150), { passive: true });
   }
 
-  doc.on((kind) => kind === 'remote' && render());
+  // A sync that changes the lists re-renders them. A row being edited is
+  // found again and stays in edit mode, with the text and caret as they were.
+  doc.on((kind) => {
+    if (kind !== 'remote') return;
+    const was = editing;
+    if (!was || document.activeElement !== was.input) return render();
+    const { value, selectionStart, selectionEnd } = was.input;
+    const list = items(was.key);
+    let j = list.findIndex((it) => it.text === value.replace(/\s+/g, ' ').trim());
+    if (j < 0 && !value.trim()) {
+      // A new row started with Enter: the merge dropped it for being empty.
+      j = Math.min(was.i, list.length);
+      list.splice(j, 0, { text: '', time: list[j - 1]?.time ?? list[j]?.time ?? '' });
+    }
+    if (j < 0) return render(); // e.g. deleted elsewhere
+    list[j].text = value;
+    render({ key: was.key, i: j });
+    editing?.input.setSelectionRange(selectionStart, selectionEnd);
+  });
   render();
 
   return {

@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Daruma">
   <link rel="stylesheet" href="styles.css">
-  <script src="js/kanjivg-animate.js"></script>
+  <script src="js/kanjivg-animate.js" defer data-base-path="kanjivg" data-filename-format="hex" data-filename-prefix=""></script>
   <script type="module" src="js/app.js"></script>
 </head>
 <body>
@@ -157,7 +157,7 @@
     <h2>Saving and sync</h2>
     <ul>
       <li>Everything is saved on this phone as you type. It's pushed to GitHub when you leave the app, a minute after your last change, or when you tap the cloud.</li>
-      <li>Cloud with a tick: everything is on GitHub. With an arrow: changes are waiting to be pushed. Crossed out: offline, or sync isn't set up yet. With <b>!</b>: something needs your attention; tap it.</li>
+      <li>Cloud with a tick: everything is on GitHub. With an arrow: changes are waiting to be pushed. Crossed out: offline (or GitHub can't be reached), or sync isn't set up yet; everything is kept on this phone meanwhile. With <b>!</b>: something needs your attention; tap it.</li>
       <li>Using Daruma on more than one device, or editing the files on GitHub? Each copy picks up the latest version when it's opened or comes back to the front. If both have changed, the changes are merged.</li>
     </ul>
   </template>

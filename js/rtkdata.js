@@ -7,7 +7,7 @@
 export function parseCsv(text) {
   const rows = [];
   let row = [], field = '', quoted = false;
-  text = text.replace(/^﻿/, '');
+  text = text.replace(/^\uFEFF/, ''); // byte order mark
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (quoted) {

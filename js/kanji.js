@@ -146,9 +146,10 @@ function initPad(canvas) {
     }
   });
 
+  // A cancelled stroke (e.g. a system gesture took over) stops where it is.
   const end = (e) => {
     if (e.pointerId !== active) return;
-    segment(lastMid, last, pos(e));
+    segment(lastMid, last, e.type === 'pointerup' ? pos(e) : last);
     active = null;
   };
   canvas.addEventListener('pointerup', end);

@@ -1,4 +1,4 @@
-import { load, save } from './store.js';
+import { load, save, onSaveError } from './store.js';
 import { SyncedDoc, Syncer } from './sync.js';
 import {
   parseList, serializeList, emptyList, mergeList3, upgradeList,
@@ -23,6 +23,8 @@ const correctionsDoc = new SyncedDoc('corrections', {
 // Read-only: the RTK keyword index and Anki deck, from another repo.
 const rtkSource = new RtkSource();
 let rtkPage = null; // shows "fetching…" until the first sync, so it's told about each one
+
+onSaveError((e) => notify(`Couldn't save on this device (${e.name}). Changes are kept while the app is open, and pushed to GitHub when it syncs.`, null, 10000));
 
 const statusBtn = document.getElementById('sync-status');
 // Line icons: a cloud plus a state mark.

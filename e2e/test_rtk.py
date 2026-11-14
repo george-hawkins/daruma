@@ -215,3 +215,25 @@ def test_without_a_hash_the_last_page_is_shown(app, files):
     app.open(page="corrections")
     assert app.shown() == "corrections"
     assert app.hash() == "#corrections"
+
+
+def test_a_card_opened_from_the_url_fetches_only_its_drawing(app, files):
+    open_rtk(app)  # the RTK files are now on the device
+    requested = []
+    app.page.on("request", lambda r: "kanjivg" in r.url and requested.append(r.url.rsplit("/", 1)[1]))
+    app.page.goto(f"{app.base_url}/#rtk/%E5%8F%AF")
+    app.page.wait_for_selector("#rtk-card-body .kanjivg-animate svg")
+    assert requested == ["053ef.svg"]
+
+
+def test_the_focus_moves_to_the_card_only_for_keyboard_users(app, files):
+    open_rtk(app)
+    search(app, "can")
+    focused = lambda: app.page.evaluate("document.activeElement.id")
+    app.page.locator("tr.hit", has_text="可").click()
+    assert focused() != "rtk-back"
+    app.page.click("#rtk-back")
+    app.page.wait_for_function("!document.getElementById('page-rtk').classList.contains('card-open')")
+    app.page.locator("tr.hit", has_text="可").focus()
+    app.page.keyboard.press("Enter")
+    assert focused() == "rtk-back"

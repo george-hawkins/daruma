@@ -50,8 +50,8 @@ The token is stored only on the device. A token is needed because GitHub doesn't
 
 - Every change is saved on the device immediately, so nothing is lost if you switch away or the app is killed.
 - Changes are pushed to GitHub, one commit per push, when you leave the app, a minute after your last edit, or when you tap the sync icon in the top bar. The app pulls from GitHub when it's opened or brought back to the front.
-- Sync icon: a cloud with a tick (synced), with an arrow (changes waiting to be pushed; it pulses while syncing), crossed out (offline or not set up) or with "!" (needs attention; tap it).
-- You can use Daruma on several devices (e.g. a phone and a laptop browser) and edit the files on GitHub too. Enter the settings on each device. Each copy picks up the latest version when it's opened, comes back to the front, or every few minutes while it's open. If a device has unpushed changes and the file changed elsewhere too, the two are merged item by item: additions, edits, moves and items marked done from both sides are kept.
+- Sync icon: a cloud with a tick (synced), with an arrow (changes waiting to be pushed; it pulses while syncing), crossed out (offline, GitHub can't be reached, or not set up; nothing is lost, it catches up later) or with "!" (needs attention; tap it).
+- You can use Daruma on several devices (e.g. a phone and a laptop browser) and edit the files on GitHub too. Enter the settings on each device. Each copy picks up the latest version when it's opened, comes back to the front, or every few minutes while it's open. If a device has unpushed changes and the file changed elsewhere too, the two are merged item by item: additions, edits, moves and items marked done from both sides are kept, including a word added again that is already further down the list.
 
 Entries are grouped under UTC timestamps, newest first. A new group starts when an entry arrives in a list (typed in, moved, or marked done) more than 6 hours after that list's newest group began. The app doesn't show the timestamps, only a slightly darker line between groups. The files look like this:
 

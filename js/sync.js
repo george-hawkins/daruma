@@ -73,6 +73,7 @@ export class Syncer {
     this.again = false;
     this.force = false;
     this.error = null;
+    this.unreachable = false; // the last sync couldn't reach GitHub at all
     this.lastPull = 0;
     this.timer = null;
     this.results = {}; // per doc: { time, text } describing the last sync
@@ -132,9 +133,17 @@ export class Syncer {
     return this.running;
   }
 
+  // Failing to reach GitHub at all (offline, or no connection to it) isn't an
+  // error worth a notice: everything is on the device, and the next sync
+  // (e.g. when the connection comes back) catches up. The icon shows it.
   async syncAll(quick, force) {
     const settings = getSettings();
     const errors = [];
+    let unreachable = false;
+    const failed = (name, e) => {
+      if (e.status === 0) unreachable = true;
+      else errors.push(`${name}: ${e.message}`);
+    };
     for (const d of this.docs) {
       if (quick && !d.state.dirty) continue;
       try {
@@ -142,7 +151,7 @@ export class Syncer {
         this.results[d.name] = { time: new Date(), text };
       } catch (e) {
         if (quick) continue;
-        errors.push(`${d.name}: ${e.message}`);
+        failed(d.name, e);
         this.results[d.name] = { time: new Date(), text: `failed: ${e.message}` };
       }
     }
@@ -152,13 +161,14 @@ export class Syncer {
           await src.refresh({ force });
         } catch (e) {
           src.fail(e);
-          errors.push(`${src.name}: ${e.message}`);
+          failed(src.name, e);
         }
       }
       this.lastPull = Date.now();
       const error = errors.join('\n') || null;
       if (error && error !== this.error) this.notify(`Sync failed: ${error}`, null, 8000);
       this.error = error;
+      this.unreachable = unreachable;
     }
   }
 
@@ -180,9 +190,9 @@ export class Syncer {
     for (let attempt = 1; ; attempt++) {
       const remote = await getFile(loc, settings.token);
       const firstSync = st.syncedUrl !== url;
+      const theirs = remote && doc.parse(remote.text);
 
       if (remote && (firstSync || remote.sha !== st.sha)) {
-        const theirs = doc.parse(remote.text);
         if (!st.dirty) {
           // Changed on GitHub only: take its version.
           Object.assign(st, { data: theirs, base: copy(theirs), sha: remote.sha, syncedUrl: url });
@@ -203,6 +213,15 @@ export class Syncer {
         doc.persist();
       } else if (!st.dirty) {
         return 'up to date';
+      }
+
+      // Nothing to push if GitHub already has it all (e.g. an entry added and
+      // deleted again, or a push whose reply was lost when the app was
+      // closed). Comparing parsed content leaves hand-made formatting alone.
+      if (remote && doc.serialize(st.data) === doc.serialize(theirs)) {
+        Object.assign(st, { dirty: false, syncedUrl: url });
+        doc.persist();
+        return merged ? 'merged with GitHub; nothing new to push' : 'up to date (nothing new to push)';
       }
 
       try {
@@ -262,11 +281,13 @@ export class Syncer {
     const s = getSettings();
     const configured = (s.token && this.docs.some((d) => parseGitHubUrl(s[d.urlKey]))) || this.sources.some((src) => src.configured(s));
     const dirty = this.docs.some((d) => d.state.dirty);
+    const later = dirty ? 'changes are saved on this device and will be pushed later' : 'showing what was last synced';
     let state, label;
     if (!configured) [state, label] = ['off', 'Sync is not set up yet (see settings)'];
     else if (this.running) [state, label] = ['syncing', 'Syncing…'];
+    else if (!navigator.onLine) [state, label] = ['offline', `Offline; ${later}`];
     else if (this.error) [state, label] = ['error', `Sync failed: ${this.error}`];
-    else if (dirty && !navigator.onLine) [state, label] = ['offline', 'Offline; changes are saved on this device and will be pushed later'];
+    else if (this.unreachable) [state, label] = ['offline', `Can't reach GitHub; ${later}`];
     else if (dirty) [state, label] = ['pending', 'Changes saved on this device, not yet pushed to GitHub'];
     else [state, label] = ['ok', 'Everything is pushed to GitHub'];
     this.onStatus(state, label);

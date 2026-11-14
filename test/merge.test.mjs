@@ -70,7 +70,7 @@ test('empty base (first sync) combines both', () => {
 
 test('whitespace and empty rows are normalised', () => {
   const b = doc(['a']);
-  assert.deepEqual(m(b, doc(['  a ', '', 'new  item']), doc(['a'])), doc(['new item', 'a']));
+  assert.deepEqual(m(b, doc(['  a ', '', 'new  item']), doc(['a'])), doc(['a', 'new item']));
 });
 
 test('mergeSections3 keeps GitHub preamble and extra sections', () => {
@@ -83,4 +83,22 @@ test('mergeSections3 keeps GitHub preamble and extra sections', () => {
   assert.equal(r.preamble, '# Notes');
   assert.deepEqual(r.extra, remote.extra);
   assert.deepEqual(r.corrections, items('b', 'a'));
+});
+
+test('identical lines are separate items: one added again is kept', () => {
+  // Forgotten "apply" again on the phone while the laptop added "laptop".
+  assert.deepEqual(m(doc(['apply']), doc(['apply', 'apply']), doc(['laptop', 'apply'])), doc(['apply', 'laptop', 'apply']));
+  // Both added the same new line: still one (the first copy on each side).
+  assert.deepEqual(m(doc(['a']), doc(['x', 'a']), doc(['x', 'a'])), doc(['x', 'a']));
+  // One of two copies deleted on one side: one is left.
+  assert.deepEqual(m(doc(['a', 'a']), doc(['a']), doc(['a', 'a'])), doc(['a']));
+  // A copy marked done while an older copy is already in Done.
+  assert.deepEqual(m(doc(['a'], [], ['a']), doc([], [], ['a', 'a']), doc(['a', 'n'], [], ['a'])), doc(['n'], [], ['a', 'a']));
+});
+
+test('an item edited or added below the top stays in its place', () => {
+  const b = doc(['a', 'b', 'c']);
+  assert.deepEqual(m(b, doc(['a', 'b2', 'c']), doc(['new', 'a', 'b', 'c'])), doc(['new', 'a', 'b2', 'c']));
+  // A row started with Enter below "a".
+  assert.deepEqual(m(b, doc(['a', 'a2', 'b', 'c']), doc(['b', 'c'], [], ['a'])), doc(['a2', 'b', 'c'], [], ['a']));
 });

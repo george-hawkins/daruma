@@ -217,6 +217,22 @@ class App:
         self.page.wait_for_timeout(700)
         self.page.mouse.up()
 
+    def swipe(self, locator, dx=250):
+        """Drags a row sideways (with the mouse, which the row treats like a finger)."""
+        box = locator.bounding_box()
+        x, y = box["x"] + 40, box["y"] + box["height"] / 2
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        for step in range(1, 6):
+            self.page.mouse.move(x + dx * step / 5, y)
+        self.page.mouse.up()
+
+    def offline(self):
+        """Cuts the connection: GitHub can't be reached and the browser knows it."""
+        self.page.unroute("https://api.github.com/**")
+        self.page.route("https://api.github.com/**", lambda route: route.abort("internetdisconnected"))
+        self.page.context.set_offline(True)
+
     def menu(self, locator, choice: str):
         self.long_press(locator)
         self.page.locator("#dialog button", has_text=choice).click()

@@ -107,3 +107,61 @@ def test_a_menu_acts_on_its_entry_even_if_a_sync_reorders_the_list_meanwhile(app
     app.page.locator("#dialog button", has_text="Delete").click()
     app.sync()
     assert files.text(FORGOTTEN) == f"# Forgotten kanji\n\n{NOW}\n\n* from laptop\n* keep\n"
+
+
+def test_clicking_another_row_while_editing_starts_editing_it(app, files):
+    # With a mouse (e.g. a laptop), the press used to end the first edit and
+    # re-render the list, so the click was lost.
+    files.set(CORRECTIONS, corrections(c=f"\n{NOW}\n\n* A\n* B\n"))
+    app.open(page="corrections")
+    app.page.locator("#clist-corrections li", has_text="A").click()
+    app.page.locator("#clist-corrections li", has_text="B").click()
+    assert app.page.input_value("#clist-corrections li input") == "B"
+
+
+def test_a_swipe_marks_the_swiped_row_done_even_if_a_sync_changes_the_list_meanwhile(app, files):
+    files.set(CORRECTIONS, corrections(c=f"\n{NOW}\n\n* A\n* B\n"))
+    app.open(page="corrections")
+    app.page.clock.pause_at("2026-11-14T12:10:00Z")  # hold the slide-away animation
+    app.swipe(app.page.locator("#clist-corrections li", has_text="B"))
+    # Before it finishes, a sync brings in an entry from another device.
+    files.set(CORRECTIONS, corrections(c=f"\n{NOW}\n\n* New\n* A\n* B\n"))
+    app.sync()
+    app.page.clock.run_for(500)
+    app.sync()
+    assert files.text(CORRECTIONS) == corrections(c=f"\n{NOW}\n\n* New\n* A\n", d="\n### 2026-11-14T12:10:00Z\n\n* B\n")
+
+
+def test_an_edit_carries_on_through_a_sync_that_changes_the_list(app, files):
+    files.set(CORRECTIONS, corrections(c=f"\n{NOW}\n\n* A\n* B\n"))
+    app.open(page="corrections")
+    app.page.locator("#clist-corrections li", has_text="B").click()
+    app.page.keyboard.type(" more")
+    # Back to this window after another device added an entry: a pull.
+    files.set(CORRECTIONS, corrections(c=f"\n{NOW}\n\n* New\n* A\n* B\n"))
+    app.advance(31 * 1000)
+    app.page.evaluate("window.dispatchEvent(new Event('focus'))")
+    app.page.wait_for_function("() => document.querySelectorAll('#clist-corrections li').length === 3")
+    app.page.keyboard.type(" text")
+    assert app.page.input_value("#clist-corrections li input") == "B more text"
+    app.page.click("#clist-corrections h2")  # finish editing
+    app.sync()
+    # (The merge keeps the edited row where it was, below A.)
+    assert files.text(CORRECTIONS) == corrections(c=f"\n{NOW}\n\n* New\n* A\n* B more text\n")
+
+
+def test_a_cancelled_stroke_isnt_drawn_to_the_corner(app, files):
+    app.open()
+    ink = """([x, y]) => { const c = document.getElementById('kanji-canvas'), r = c.getBoundingClientRect(), d = devicePixelRatio;
+      return c.getContext('2d').getImageData((x - r.left) * d, (y - r.top) * d, 1, 1).data[3]; }"""
+    app.page.evaluate("document.getElementById('kanji-canvas').addEventListener('pointerdown', e => window.pid = e.pointerId)")
+    box = app.page.locator("#kanji-canvas").bounding_box()
+    x, y = box["x"] + 150, box["y"] + 300
+    app.page.mouse.move(x, y)
+    app.page.mouse.down()
+    app.page.mouse.move(x + 20, y + 20, steps=4)
+    # The system takes over the gesture: a pointercancel (here without a position).
+    app.page.evaluate("document.getElementById('kanji-canvas').dispatchEvent(new PointerEvent('pointercancel', { pointerId: window.pid }))")
+    app.page.mouse.up()
+    assert app.page.evaluate(ink, [x + 10, y + 10]) > 0  # the stroke so far
+    assert app.page.evaluate(ink, [x / 2, y / 2]) == 0  # nothing towards the corner

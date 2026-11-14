@@ -19,6 +19,7 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - [x] Timestamp groups in the files (0.9). Unit tests in `test/markdown.test.mjs`.
 - [x] End-to-end tests (0.9.1): `uv run pytest` (pytest + Playwright, real app in Chrome, fake GitHub). They found two old bugs, now fixed: see *Testing*.
 - [x] Page and RTK card in the URL (0.9.2): `#rtk/可` survives a refresh and can be bookmarked.
+- [x] Review (0.9.3): fixes for merging repeated lines, offline shown as an error, clicks lost while editing, swipes and edits during a sync, no-op commits, slow first loads with the service worker, storage-full errors. See *Testing* for the list.
 - [ ] Try it on the phone; tune brush width (`BRUSH` in `js/kanji.js`) and anything else that feels off
 
 ## Requirements (the "what")
@@ -46,14 +47,19 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 - **Several instances edit the same files** (George adds corrections on his phone and marks them done in a laptop browser later; he also occasionally edits files on GitHub). Switching is slow and best effort is fine. Design, from 0.7:
   - Each doc stores `sha` (the blob it last synced) and `base` (that blob's parsed content). No git history beyond that is needed: `base` is the common ancestor for a three-way merge.
   - File changed on GitHub, no local changes: take GitHub's version.
-  - Changed on both sides: `merge3(base, local, remote)` in `js/merge.js`, then push the result and show a notice. The merge works per item text, deciding which list it ends up in. One side changed it: take that. Both made the same change: take it. Both changed it differently: never lose the item, and prefer this device's list. Edits are remove-plus-add, so "edited here, marked done there" keeps both. New arrivals go at the top of their list (this device's first), then the rest in GitHub's order. Identical lines collapse into one.
+  - Changed on both sides: `merge3(base, local, remote)` in `js/merge.js`, then push the result and show a notice. The merge works per item, deciding which list it ends up in. One side changed it: take that. Both made the same change: take it. Both changed it differently: never lose the item, and prefer this device's list. Edits are remove-plus-add, so "edited here, marked done there" keeps both.
+  - An item is its text plus which occurrence of that text it is, counted from the oldest end of the file (0.9.3). So identical lines stay separate items: a word forgotten again, while it's still further down the list, survives a merge (before, identical lines collapsed into one and the new entry vanished). Adding at the top never renumbers the older copies.
+  - Order: GitHub's, with this device's own items (additions, edits, moves) each placed after the item above it on this device, or at the top if there's none (0.9.3). New items from both sides end up at the top, this device's first, and an edited item stays where it was (before, it jumped to the top).
+  - Nothing is pushed if GitHub already has the same content, compared after parsing (0.9.3): e.g. an entry added and deleted again, or a push whose reply was lost when the app was closed. This avoids empty commits and leaves hand-made formatting on GitHub alone.
   - First sync with a file URL: base = empty, so the merge is a union.
   - Docs synced by older versions have no `base`. It is fetched from GitHub by sha (`git/blobs/{sha}`), falling back to empty (union).
   - Writes send the base `sha`, so GitHub rejects them (409/422) if another instance pushed in between. The sync then re-reads, re-merges and retries (up to 3 attempts). The quick push on hide doesn't read first; if it's rejected, the next full sync merges.
   - Header, preamble and unknown sections can only change on GitHub, so GitHub's are kept.
   - 0.6's "which version do you want to keep?" prompt was replaced by this merge.
 - Settings → *Sync details* shows, per document, the item count, whether there are unpushed changes, the last known GitHub blob sha and the result of the last sync. A missing file is created on the first sync, even when there is nothing new to push.
-- Sync indicator: a line-icon cloud with a tick (synced), an up arrow (pending; pulsing while syncing), a slash (offline / not set up) or "!" (error). Tapping it shows the status and syncs now.
+- Sync indicator: a line-icon cloud with a tick (synced), an up arrow (pending; pulsing while syncing), a slash (offline, GitHub unreachable, or not set up) or "!" (error). Tapping it shows the status and syncs now.
+- Failing to reach GitHub at all (a network error, status 0) isn't an error: there's no "Sync failed" notice, and the icon shows the slash, labelled *Offline* or *Can't reach GitHub* (0.9.3; before, being offline showed "!" and a notice on every open). Other failures (bad token, missing repo, …) are errors as before.
+- If a save to localStorage fails (e.g. storage is full), a notice says so (`onSaveError` in `store.js`). The data stays in memory and is still pushed to GitHub.
 - Help: the ? button in the top bar opens a dialog. Its content is the `<template id="help">` in `index.html`; keep it in step with the gestures.
 
 ### Authentication
@@ -120,6 +126,8 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
 ### Corrections
 - Each list has an add box at the top. Enter adds the item and keeps focus, so several items can be typed in a row.
 - Tap a row to edit it in place (the caret goes where you tap). Enter starts a new row below it. Rows left empty are removed.
+- A sync that changes the lists while a row is being edited re-renders them, but the row stays in edit mode with its text and caret (0.9.3).
+- A swipe acts on the item swiped, looked up again after the slide-away animation, as a sync may have changed the list in between (0.9.3).
 - **Swipe a row either way → done**, with an **Undo** snackbar.
 - Long-press → Move to the other list / Mark done / Delete.
 
@@ -135,8 +143,9 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - The CSV and the deck are joined on the kanji only. Cards whose kanji is already in the CSV group are left out of the deck group (they'd be the same row).
 - **Results:** two groups, CSV first, each in file order. The deck group ("Also found in cards") is on pale gold paper with a gold margin.
 - **Card:** George's back template (`<span class="kanjivg-animate">{{Kanji}}</span>`, keyword, story, `Note: …` if present), plus `Update: …` styled like the note, so the deck's optional sixth field isn't lost. Inline Markdown: `**bold**`, `_italic_`, `*italic*` (also inside a word: `*gold*fish`), code, links and hard newlines. A kanji with no card yet shows just the drawing and keyword. Styling follows `rtk-mockup.html` (20 px, line-height 1.5, centered, 8em drawing, uppercase bold keyword), without night mode or the mock frame.
+- Opening a card moves the focus to "‹ Results" only when it was opened with the keyboard (0.9.3); after a tap, the focus ring was just noise.
 - **Back to the results:** a "‹ Results" bar on the card, and opening a card pushes a history entry (`#rtk/可`) so Android's back gesture returns to the list (and doesn't leave the app). The card is an overlay, so the list keeps its scroll position. A card shown from the URL (refresh, bookmark, back/forward) doesn't push an entry; if there's no results entry to go back to, "‹ Results" just shows the results. A link to a card before the RTK files are on the device opens it once they've been fetched; a link to a kanji that isn't in them searches for it instead.
-- **KanjiVG:** `kanjivg/` holds the 2200 SVGs for the RTK kanji from `kanjivg-20260714-main.zip`, named by zero-padded hex code point (`04e00.svg`), as KanjiVG ships them. `kanjivgAnimate({ root, basePath: 'kanjivg', filenameFormat: 'hex', filenamePrefix: '' })` is called on the card; tapping the drawing replays it. If an SVG is missing, the character is shown in Klee One. KanjiVG is CC BY-SA 3.0, credited in Settings → About.
+- **KanjiVG:** `kanjivg/` holds the 2200 SVGs for the RTK kanji from `kanjivg-20260714-main.zip`, named by zero-padded hex code point (`04e00.svg`), as KanjiVG ships them. The script is loaded with `defer` and configured on its `<script>` tag (`data-base-path="kanjivg" data-filename-format="hex" data-filename-prefix=""`); `kanjivgAnimate({ root })` is called on the card; tapping the drawing replays it. If an SVG is missing, the character is shown in Klee One. KanjiVG is CC BY-SA 3.0, credited in Settings → About.
 - **Klee One** SemiBold (`fonts/KleeOne-SemiBold.woff2`, 2.9 MB, OFL) is declared with a `unicode-range` for kana and kanji only, so Latin text stays in the system font (as in George's Ghostty setup). The font and SVGs aren't in the service worker's `SHELL`; they're cached on first use. Subsetting the font (e.g. `pyftsubset`) to the characters in use would cut it to a few hundred KB if the first load is ever a problem.
 - Three tabs only just fit at 412 px; below 400 px the tab and icon padding shrinks.
 
@@ -148,13 +157,25 @@ Daruma (the repo is `daruma`, renamed from `japanese-study-app`) is a small inst
   - Assert on what matters to George: the exact text of the files pushed to GitHub, and what the app shows.
   - Use the fake clock for anything time-based (6-hour groups, RTK checks, the 60 s push delay) rather than waiting.
   - Old local-data formats are tested by seeding localStorage with what that version saved (`test_sync.py`).
-  - `test_lists.py`: groups, the darker rule, edit/delete/done/undo/move, Enter for a new row, menus while a sync changes the list. `test_sync.py`: pull, merge, 409 retry, file creation, persistence across reloads, the 60 s push, data saved by older versions. `test_rtk.py`: search, groups, card contents, back button and gesture, check frequency and ETags, offline, settings.
+  - `test_lists.py`: groups, the darker rule, edit/delete/done/undo/move, Enter for a new row, menus, swipes and edits while a sync changes the list, clicking another row while editing, the pad. `test_sync.py`: pull, merge (including repeated lines), 409 retry, file creation, no-op pushes skipped, persistence across reloads, the 60 s push, data saved by older versions, offline and unreachable vs real errors, failed saves. `test_rtk.py`: search, groups, card contents, back button and gesture, focus, check frequency and ETags, offline, settings. `test_offline.py`: the service worker (its own context, with service workers allowed): opening offline, and a fetch slower than the timeout with nothing cached.
+  - `App.offline()` cuts the connection (GitHub requests aborted and the browser offline); `App.swipe()` drags a row sideways.
 - Bugs the end-to-end tests found when they were written (0.9.1):
   - The Kanji page's *Edit* never saved: `ui.js` set `dlg.onclick = (e) => cond && dlg.close()`, and an `on…` handler that returns `false` cancels the event, so the *Save* click never submitted the form. Use block bodies for `on…` handlers.
   - Menus acted on the row at the index the row had when the menu opened, so a sync re-rendering the list while a menu was open (or fast typing) could move, delete or mark done the wrong entry. Items are now located again after any `await` (`locate()` in `markdown.js`).
 
+- Bugs found by the review (0.9.3), each with a test that fails without the fix:
+  - Identical lines collapsed into one in a merge, so a word forgotten again (still further down the list) vanished if the file had also changed elsewhere. Items are now text plus occurrence (see *Persistence and sync*).
+  - Being offline showed "!" and a "Sync failed: … offline" notice instead of the crossed-out cloud.
+  - With a mouse, clicking another row while editing only ended the edit: the press moved the focus, which re-rendered the list before the click. Rows now cancel `mousedown`'s default (except in inputs).
+  - A swipe marked the item at the row's old index done after its 150 ms animation, the same stale-index bug as the menus had.
+  - A sync that changed the lists ended an edit in progress (on a laptop, returning to the window pulls).
+  - Each sync with unpushed but no-op changes made an empty commit.
+  - The service worker gave up after 3 s even with nothing cached (e.g. the 2.9 MB font on a slow connection), and the late response was never cached.
+  - A `pointercancel` drew the stroke's last segment to its position, which may be (0, 0).
+  - A failing localStorage save (storage full) threw out of the event handler, so e.g. the add box did nothing, with no explanation.
+
 ### Updates without losing state
-- `sw.js` is network-first (3 s timeout, then the cache). When online, the latest deployed version is always used, so there's no cache version number to bump on deploy. Offline, the cached copy is used.
+- `sw.js` is network-first (3 s timeout, then the cache). When online, the latest deployed version is always used, so there's no cache version number to bump on deploy. Offline, the cached copy is used. With nothing cached it waits for the network however long it takes, and responses are cached even if they arrive after the timeout (0.9.3).
 - Data in localStorage is never touched by updates. If the data format ever changes, add a migration (each doc's state is `{data, dirty, sha, syncedUrl, rev}`).
 - If a new file is added to the app, add it to `SHELL` in `sw.js` so it's available offline.
 

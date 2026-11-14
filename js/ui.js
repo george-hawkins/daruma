@@ -170,6 +170,12 @@ export function gestures(row, { onTap, onLongPress, onSwipe, slider }) {
   row.addEventListener('pointerup', end);
   row.addEventListener('pointercancel', end);
   row.addEventListener('contextmenu', (e) => e.preventDefault());
+  // With a mouse, pressing the button would move the focus (ending an edit
+  // in another row, which re-renders the list and loses this click) before
+  // the tap is recognised. Touch moves the focus only after the tap.
+  row.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('input')) e.preventDefault();
+  });
 }
 
 export function debounce(fn, ms) {

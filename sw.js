@@ -24,21 +24,24 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return; // e.g. api.github.com
-  e.respondWith(networkFirst(e.request));
+  e.respondWith(networkFirst(e));
 });
 
-async function networkFirst(request) {
+// The network's answer if it comes within TIMEOUT, else the cached copy. With
+// nothing cached it waits for the network however long it takes (e.g. the
+// font on a slow connection), and a late answer is still cached for next time.
+async function networkFirst(e) {
+  const { request } = e;
   const cache = await caches.open(CACHE);
+  const network = fetch(request.url, { cache: 'no-cache' });
+  // (Registered first, so it clones the response before the page reads it.)
+  e.waitUntil(network.then((r) => r.ok && cache.put(request.url, r.clone())).catch(() => {}));
+  const timeout = new Promise((resolve) => setTimeout(resolve, TIMEOUT, null));
   try {
-    const response = await Promise.race([
-      fetch(request.url, { cache: 'no-cache' }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), TIMEOUT)),
-    ]);
-    if (response.ok) await cache.put(request.url, response.clone());
-    return response;
-  } catch {
-    const cached = (await cache.match(request.url, { ignoreSearch: true })) ||
-      (request.mode === 'navigate' && (await cache.match('index.html')));
-    return cached || Response.error();
-  }
+    const response = await Promise.race([network, timeout]);
+    if (response) return response;
+  } catch { /* offline: use the cache */ }
+  const cached = (await cache.match(request.url, { ignoreSearch: true })) ||
+    (request.mode === 'navigate' && (await cache.match('index.html')));
+  return cached || network.catch(() => Response.error());
 }

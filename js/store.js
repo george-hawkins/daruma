@@ -11,6 +11,15 @@ export function load(key, fallback) {
   }
 }
 
+// Called with the error if a save fails (e.g. storage is full); app.js shows
+// it. The data stays in memory, and is still pushed to GitHub.
+let onError = (e) => console.error(e);
+export const onSaveError = (fn) => (onError = fn);
+
 export function save(key, value) {
-  localStorage.setItem(PREFIX + key, JSON.stringify(value));
+  try {
+    localStorage.setItem(PREFIX + key, JSON.stringify(value));
+  } catch (e) {
+    onError(e, key);
+  }
 }

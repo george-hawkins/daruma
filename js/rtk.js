@@ -6,8 +6,6 @@ import { el, debounce, hashFor } from './ui.js';
 import { search, cardFor, renderInline } from './rtkdata.js';
 import { getSettings } from './settings.js';
 
-const KANJIVG = { basePath: 'kanjivg', filenameFormat: 'hex', filenamePrefix: '' };
-
 export function initRtk(source) {
   const $ = (id) => document.getElementById(id);
   const page = $('page-rtk');
@@ -61,7 +59,7 @@ export function initRtk(source) {
         tr.tabIndex = 0;
         tr.append(el('td', 'frame', h.frame), el('td', 'kanji', h.kanji), el('td', 'kw', h.keyword));
         tr.addEventListener('click', () => openCard(h.kanji));
-        tr.addEventListener('keydown', (e) => e.key === 'Enter' && openCard(h.kanji));
+        tr.addEventListener('keydown', (e) => e.key === 'Enter' && openCard(h.kanji, { focus: true }));
         body.append(tr);
       }
       table.append(body);
@@ -90,7 +88,8 @@ export function initRtk(source) {
     }
     cardFrame.textContent = f.frame ? `Frame ${f.frame}` : '';
     // Falls back to the character in Klee One if there's no KanjiVG drawing.
-    window.kanjivgAnimate?.({ root: cardBody, ...KANJIVG }).then(([handle]) => !handle && k.classList.add('no-svg'));
+    // (The drawings' location is set on its <script> tag in index.html.)
+    window.kanjivgAnimate?.({ root: cardBody }).then(([handle]) => !handle && k.classList.add('no-svg'));
     if (!window.kanjivgAnimate) k.classList.add('no-svg');
   }
 
@@ -98,7 +97,9 @@ export function initRtk(source) {
   // phone's back gesture returns to the results rather than leaving the app.
   // A card shown because of the URL (a refresh, a bookmark, back/forward)
   // doesn't add one.
-  function openCard(kanji, { push = true } = {}) {
+  // Keyboard users get the focus on "‹ Results"; after a tap it isn't
+  // needed, and its ring would just be noise.
+  function openCard(kanji, { push = true, focus = false } = {}) {
     open = kanji;
     showCard(kanji);
     page.classList.add('card-open');
@@ -108,7 +109,7 @@ export function initRtk(source) {
       if (history.state?.rtkCard) history.replaceState({ rtkCard: true }, '', hash);
       else history.pushState({ rtkCard: true }, '', hash);
     }
-    $('rtk-back').focus({ preventScroll: true });
+    if (focus) $('rtk-back').focus({ preventScroll: true });
   }
 
   function closeCard() {
