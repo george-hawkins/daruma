@@ -4,8 +4,9 @@ import { load, save } from './store.js';
 import { el, gestures, menu, promptText, debounce } from './ui.js';
 import { newItem, endsGroup, locate } from './markdown.js';
 
-// Brush diameter as a fraction of the drawing area's shorter side.
-const BRUSH = 0.035;
+// Brush diameter in CSS pixels. It's fixed: it doesn't depend on the size of
+// the drawing area, so hiding the list or turning the phone doesn't change it.
+const BRUSH = 10;
 
 export function initKanji(doc, { lookUp }) {
   const page = document.getElementById('page-kanji');
@@ -75,7 +76,13 @@ export function initKanji(doc, { lookUp }) {
   setHidden(load('kanji:listHidden', false));
 
   const pad = initPad(document.getElementById('kanji-canvas'));
-  document.getElementById('kanji-clear').addEventListener('click', pad.clear);
+  // Clear acts as soon as it's touched. A click isn't enough: the browser
+  // makes no click of a touch while another finger is still down (the one
+  // that was drawing, or a palm), or of a tap that slides. The click is for
+  // the keyboard; clearing twice does no harm.
+  const clear = document.getElementById('kanji-clear');
+  clear.addEventListener('pointerdown', pad.clear);
+  clear.addEventListener('click', pad.clear);
 
   doc.on((kind) => kind === 'remote' && render());
   render();
@@ -85,7 +92,7 @@ export function initKanji(doc, { lookUp }) {
 
 function initPad(canvas) {
   const ctx = canvas.getContext('2d');
-  let dpr = 1, width = 6, rect = null;
+  let dpr = 1, rect = null;
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -107,7 +114,6 @@ function initPad(canvas) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = ctx.fillStyle = '#000';
-    width = Math.max(3, Math.min(r.width, r.height) * BRUSH);
   }
   new ResizeObserver(resize).observe(canvas);
 
@@ -115,7 +121,7 @@ function initPad(canvas) {
   const pos = (e) => ({ x: e.clientX - rect.left, y: e.clientY - rect.top });
 
   function segment(from, ctrl, to) {
-    ctx.lineWidth = width;
+    ctx.lineWidth = BRUSH;
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.quadraticCurveTo(ctrl.x, ctrl.y, to.x, to.y);
@@ -130,7 +136,7 @@ function initPad(canvas) {
     rect = canvas.getBoundingClientRect();
     last = lastMid = pos(e);
     ctx.beginPath();
-    ctx.arc(last.x, last.y, width / 2, 0, Math.PI * 2);
+    ctx.arc(last.x, last.y, BRUSH / 2, 0, Math.PI * 2);
     ctx.fill();
   });
 
@@ -157,6 +163,7 @@ function initPad(canvas) {
 
   return {
     clear() {
+      active = null; // a stroke still being drawn ends here; the rest of it is ignored
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);

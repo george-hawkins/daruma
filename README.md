@@ -18,6 +18,7 @@ The ? button in the top bar shows a summary of the gestures below.
 - Tap an entry to look it up on the RTK page (its card opens straight away if the entry is exactly an RTK keyword). Long-press an entry to edit or delete it.
 - Draw on the pad and tap **Clear** to start again. There are deliberately no colours, widths or undo.
 - ◀ / ▶ hides or shows the list to give more room for drawing.
+- Installed on Android, the back gesture doesn't close the app, so a stroke that starts at the edge of the screen (which Android takes for a back gesture) costs you that stroke but nothing else. Leave the app with the home gesture.
 
 **Corrections**: two lists of one-line notes, *Corrections* (to do soon) and *Maybe* (long-term reminders).
 

@@ -26,6 +26,59 @@ def test_tapping_a_forgotten_word_shows_its_rtk_card_and_back_returns(app, files
     assert app.hash() == "#kanji"
 
 
+def test_installed_the_back_gesture_doesnt_close_the_app(app, files):
+    app.open(installed=True)
+    app.tab("corrections")
+    app.add_correction("Kept")
+    for _ in range(3):  # however often
+        app.back(stays=True)
+        assert app.shown() == "corrections" and app.hash() == "#corrections"
+        assert app.page.url.startswith(f"{app.base_url}/#")
+    assert app.page.locator("#clist-corrections .row-inner").all_inner_texts() == ["Kept"]
+    # A refresh doesn't add another spare entry, and back still doesn't leave.
+    entries = app.entries()
+    app.page.reload()
+    app.wait_synced()
+    assert app.entries() == entries
+    app.back(stays=True)
+    assert app.shown() == "corrections"
+    # Nothing is shown afresh: something half typed in Settings is still there.
+    app.tab("settings")
+    app.page.fill("#set-forgotten", "https://github.com/o/notes/blob/main/half-typed")
+    app.back(stays=True)
+    assert app.shown() == "settings" and app.page.input_value("#set-forgotten").endswith("half-typed")
+
+
+def test_installed_back_still_returns_from_a_card_to_the_list_and_stops_there(app, files):
+    files.set(FORGOTTEN, f"# Forgotten kanji\n\n{NOW}\n\n* Can\n")
+    app.open(installed=True)
+    app.page.locator("#kanji-list li", has_text="Can").click()
+    app.page.wait_for_selector("#rtk-card-body .kanjivg-animate svg")
+    assert app.shown() == "rtk Frame 97"
+    app.back()
+    app.page.wait_for_function("!document.getElementById('page-rtk').classList.contains('card-open')")
+    assert app.shown() == "rtk"
+    app.back()
+    app.page.wait_for_function("document.getElementById('page-kanji').classList.contains('active')")
+    app.back(stays=True)
+    assert app.shown() == "kanji" and app.hash() == "#kanji"
+    # And the same again from there.
+    app.page.locator("#kanji-list li", has_text="Can").click()
+    app.page.wait_for_function("document.getElementById('page-rtk').classList.contains('card-open')")
+    app.back()
+    app.back()
+    app.page.wait_for_function("document.getElementById('page-kanji').classList.contains('active')")
+    app.back(stays=True)
+    assert app.shown() == "kanji"
+
+
+def test_in_a_browser_tab_back_leaves_as_usual(app, files):
+    app.open()
+    assert app.entries() == 2  # the page before, and the app: no spare entry
+    app.back()
+    assert app.page.url == f"{app.base_url}/e2e-blank"
+
+
 def test_tapping_a_word_that_isnt_a_keyword_shows_the_matches(app, files):
     files.set(FORGOTTEN, f"# Forgotten kanji\n\n{NOW}\n\n* mouth\n")
     app.open()

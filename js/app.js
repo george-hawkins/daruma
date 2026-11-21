@@ -97,8 +97,32 @@ const route = () => {
   return Boolean(pages[page]);
 };
 for (const t of document.querySelectorAll('.tab')) t.addEventListener('click', () => show(t.dataset.page));
-window.addEventListener('popstate', route); // back/forward, or a hash typed in
+
+// Installed, Android's back gesture closes the app when there's nothing to go
+// back to, and a stroke drawn in from the edge of the pad is taken for one.
+// So the app's first history entry is a spare that's never the one in use:
+// a back that lands on it is undone by going forward again. (Forward rather
+// than pushing a new entry: Chrome skips entries that were left without the
+// page having been touched.)
+const installed = matchMedia('(display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui)').matches;
+const onSpare = () => {
+  const nav = window.navigation;
+  if (!installed || !nav?.currentEntry) return false;
+  return !nav.entries()[nav.currentEntry.index - 1]?.sameDocument; // none of the app's entries below
+};
+let returning = false; // on the way forward again: nothing has changed, so nothing is re-shown
+window.addEventListener('popstate', () => { // back/forward, or a hash typed in
+  if (onSpare() && navigation.canGoForward) {
+    returning = true;
+    history.forward();
+  } else if (returning) {
+    returning = false;
+  } else {
+    route();
+  }
+});
 if (!route()) show(load('page', 'kanji'));
+if (onSpare()) history.pushState(null, '', location.href);
 
 navigator.storage?.persist?.();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');

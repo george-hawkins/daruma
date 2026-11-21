@@ -154,10 +154,15 @@ class App:
         self.page = page
         self.base_url = base_url
 
-    def open(self, *, settings=None, storage=None, page="kanji", clock=T0, hash=""):
+    def open(self, *, settings=None, storage=None, page="kanji", clock=T0, hash="", installed=False):
         """Seeds localStorage (keys without the "daruma:" prefix) and opens the
         app (at URL `hash`, e.g. "#rtk/可"), with its clock starting at `clock`,
-        then waits for the first sync."""
+        then waits for the first sync. `installed`: as launched from the home
+        screen (display-mode: standalone) rather than in a browser tab."""
+        if installed:
+            # Chrome can't emulate display-mode, so the media query is faked.
+            self.page.add_init_script("""{ const real = window.matchMedia.bind(window);
+              window.matchMedia = (q) => /display-mode/.test(q) ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q); }""")
         if clock is not None:
             self.page.clock.install(time=clock)
         self.page.goto(f"{self.base_url}/e2e-blank")  # any same-origin page
@@ -191,6 +196,21 @@ class App:
           const card = document.getElementById('page-rtk').classList.contains('card-open');
           return page === 'rtk' && card ? `rtk ${document.getElementById('rtk-card-frame').textContent}` : page;
         }""")
+
+    def back(self, *, stays=False):
+        """Android's back gesture. `stays`: the app is expected to absorb it
+        (by going back and then forward again); waits until it has."""
+        if not stays:
+            return self.page.go_back()
+        self.page.evaluate("() => { window.pops = []; window.onpopstate = () => window.pops.push(navigation.currentEntry.index); }")
+        index = self.page.evaluate("navigation.currentEntry.index")
+        self.page.go_back()
+        self.page.wait_for_function("window.pops?.length === 2", timeout=3000)
+        assert self.page.evaluate("window.pops") == [index - 1, index]
+
+    def entries(self) -> int:
+        """How many history entries the app has, counting the page it was opened from."""
+        return self.page.evaluate("navigation.entries().length")
 
     def tab(self, name: str):
         self.page.click(f".tab[data-page={name}]")

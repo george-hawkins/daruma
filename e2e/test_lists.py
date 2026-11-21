@@ -165,3 +165,106 @@ def test_a_cancelled_stroke_isnt_drawn_to_the_corner(app, files):
     app.page.mouse.up()
     assert app.page.evaluate(ink, [x + 10, y + 10]) > 0  # the stroke so far
     assert app.page.evaluate(ink, [x / 2, y / 2]) == 0  # nothing towards the corner
+
+
+def test_the_brush_is_the_same_width_whatever_the_size_of_the_pad(app, files):
+    app.open()
+    # The width of the ink along a row of the canvas, in CSS pixels (y from the canvas's top).
+    ink_width = """(y) => { const c = document.getElementById('kanji-canvas'), d = devicePixelRatio;
+      const row = c.getContext('2d').getImageData(0, Math.round(y * d), c.width, 1).data;
+      let sum = 0; for (let i = 3; i < row.length; i += 4) sum += row[i];
+      return sum / 255 / d; }"""
+    sized = """() => { const c = document.getElementById('kanji-canvas');
+      return c.width === Math.round(c.getBoundingClientRect().width * devicePixelRatio); }"""
+
+    def dot(y):
+        box = app.page.locator("#kanji-canvas").bounding_box()
+        app.page.mouse.click(box["x"] + 150, box["y"] + y)
+        return app.page.evaluate(ink_width, y)
+
+    def resized(change):
+        before = app.page.locator("#kanji-canvas").bounding_box()
+        change()
+        app.page.wait_for_function(sized)
+        after = app.page.locator("#kanji-canvas").bounding_box()
+        assert (after["width"], after["height"]) != (before["width"], before["height"])
+
+    # Dots drawn so far, by row: each stays exactly as it was drawn.
+    drawn = {}
+
+    def unchanged():
+        return all(abs(app.page.evaluate(ink_width, y) - w) < 0.01 for y, w in drawn.items())
+
+    def draw(y):
+        drawn[y] = dot(y)
+        return abs(drawn[y] - 10) < 0.5  # BRUSH, give or take the antialiasing
+
+    assert draw(100)
+
+    # The list is hidden: the pad grows from two thirds of the page to all of it.
+    resized(lambda: app.page.click("#kanji-toggle"))
+    assert app.page.locator("#kanji-side").is_hidden()
+    assert unchanged()
+    assert draw(150)
+
+    # The phone is turned on its side.
+    resized(lambda: app.page.set_viewport_size({"width": 915, "height": 412}))
+    assert unchanged()
+    assert draw(200)
+
+    # And back, with the list shown again.
+    resized(lambda: app.page.set_viewport_size({"width": 412, "height": 915}))
+    resized(lambda: app.page.click("#kanji-toggle"))
+    assert unchanged()
+    assert draw(250)
+
+
+def test_clear_works_on_touches_the_browser_doesnt_turn_into_clicks(app, files):
+    app.open()
+    page = app.page
+    cdp = page.context.new_cdp_session(page)
+    cdp.send("Emulation.setTouchEmulationEnabled", {"enabled": True, "maxTouchPoints": 5})
+    page.evaluate("document.getElementById('kanji-clear').addEventListener('click', () => window.clicks = (window.clicks ?? 0) + 1)")
+    inked = """() => { const c = document.getElementById('kanji-canvas');
+      return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v > 0); }"""
+    pad = page.locator("#kanji-canvas").bounding_box()
+    btn = page.locator("#kanji-clear").bounding_box()
+    px, py = pad["x"] + 150, pad["y"] + 300
+    bx, by = btn["x"] + btn["width"] / 2, btn["y"] + btn["height"] / 2
+
+    def touch(kind, *fingers):
+        """The fingers on the screen after this event, as (id, x, y)."""
+        cdp.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": [{"id": i, "x": x, "y": y} for i, x, y in fingers]})
+        page.wait_for_timeout(30)
+
+    # The drawing finger hasn't quite left the pad when another touches Clear.
+    touch("touchStart", (1, px, py))
+    touch("touchMove", (1, px + 40, py + 40))
+    assert page.evaluate(inked)
+    touch("touchStart", (1, px + 40, py + 40), (2, bx, by))
+    assert not page.evaluate(inked)
+    # The rest of that stroke, as the finger leaves, isn't drawn on the cleared pad.
+    touch("touchMove", (1, px + 60, py + 60), (2, bx, by))
+    touch("touchEnd", (2, bx, by))
+    touch("touchEnd")
+    assert not page.evaluate(inked)
+
+    # A hurried tap that slides across the button.
+    touch("touchStart", (1, px, py))
+    touch("touchMove", (1, px + 40, py + 40))
+    touch("touchEnd")
+    assert page.evaluate(inked)
+    touch("touchStart", (1, bx, by))
+    touch("touchMove", (1, bx + 25, by))
+    touch("touchEnd")
+    assert not page.evaluate(inked)
+
+    page.wait_for_timeout(400)
+    assert page.evaluate("window.clicks ?? 0") == 0  # neither was a click
+    # A click (e.g. Enter or Space on the button) still clears.
+    touch("touchStart", (1, px, py))
+    touch("touchEnd")
+    assert page.evaluate(inked)
+    page.focus("#kanji-clear")
+    page.keyboard.press("Enter")
+    assert not page.evaluate(inked) and page.evaluate("window.clicks") == 1
