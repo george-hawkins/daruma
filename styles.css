@@ -170,13 +170,13 @@ main { flex: 1; min-height: 0; position: relative; }
 #kanji-list li:active { background: var(--rule); }
 #kanji-list:empty::before { padding: 14px 12px; font-size: 14px; }
 
-#kanji-pad { flex: 1; position: relative; }
+#kanji-pad { flex: 1; position: relative; overflow: hidden; }
 
+/* Sized by kanji.js: as big as the pad has ever been, so it can overflow. */
 #kanji-canvas {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
   touch-action: none;
 }
 

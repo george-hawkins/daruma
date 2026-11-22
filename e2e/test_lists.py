@@ -174,8 +174,9 @@ def test_the_brush_is_the_same_width_whatever_the_size_of_the_pad(app, files):
       const row = c.getContext('2d').getImageData(0, Math.round(y * d), c.width, 1).data;
       let sum = 0; for (let i = 3; i < row.length; i += 4) sum += row[i];
       return sum / 255 / d; }"""
-    sized = """() => { const c = document.getElementById('kanji-canvas');
-      return c.width === Math.round(c.getBoundingClientRect().width * devicePixelRatio); }"""
+    # The canvas reaches wherever the pad now does.
+    covered = """() => { const c = document.getElementById('kanji-canvas'), p = document.getElementById('kanji-pad').getBoundingClientRect();
+      return c.width >= Math.round(p.width * devicePixelRatio) && c.height >= Math.round(p.height * devicePixelRatio); }"""
 
     def dot(y):
         box = app.page.locator("#kanji-canvas").bounding_box()
@@ -183,10 +184,10 @@ def test_the_brush_is_the_same_width_whatever_the_size_of_the_pad(app, files):
         return app.page.evaluate(ink_width, y)
 
     def resized(change):
-        before = app.page.locator("#kanji-canvas").bounding_box()
+        before = app.page.locator("#kanji-pad").bounding_box()
         change()
-        app.page.wait_for_function(sized)
-        after = app.page.locator("#kanji-canvas").bounding_box()
+        app.page.wait_for_function(covered)
+        after = app.page.locator("#kanji-pad").bounding_box()
         assert (after["width"], after["height"]) != (before["width"], before["height"])
 
     # Dots drawn so far, by row: each stays exactly as it was drawn.
@@ -268,3 +269,59 @@ def test_clear_works_on_touches_the_browser_doesnt_turn_into_clicks(app, files):
     page.focus("#kanji-clear")
     page.keyboard.press("Enter")
     assert not page.evaluate(inked) and page.evaluate("window.clicks") == 1
+
+
+def test_whats_drawn_survives_the_pad_shrinking_and_growing_again(app, files):
+    app.open()
+    page = app.page
+    # Is there ink at a point of the canvas (CSS pixels from its top left)?
+    ink = """([x, y]) => { const c = document.getElementById('kanji-canvas'), d = devicePixelRatio;
+      return c.getContext('2d').getImageData(Math.round(x * d), Math.round(y * d), 1, 1).data[3] > 0; }"""
+    covered = """() => { const c = document.getElementById('kanji-canvas'), p = document.getElementById('kanji-pad').getBoundingClientRect();
+      return c.width >= Math.round(p.width * devicePixelRatio) && c.height >= Math.round(p.height * devicePixelRatio); }"""
+
+    def pad():
+        return page.locator("#kanji-pad").bounding_box()
+
+    def settle():
+        page.wait_for_timeout(100)  # the pad's resize has been seen
+        page.wait_for_function(covered)
+
+    def dot(x, y):
+        page.mouse.click(pad()["x"] + x, pad()["y"] + y)
+        assert page.evaluate(ink, [x, y])
+
+    page.click("#kanji-toggle")  # hide the list: the pad is the whole page wide
+    settle()
+    wide = pad()
+    right = (wide["width"] - 40, 200)  # beyond the pad once the list is back
+    low = (100, wide["height"] - 150)  # beyond the pad once the phone is on its side
+    dot(*right)
+    dot(*low)
+
+    page.click("#kanji-toggle")  # show the list
+    settle()
+    assert pad()["width"] < right[0]
+    page.click("#kanji-toggle")  # and hide it again
+    settle()
+    assert page.evaluate(ink, right) and page.evaluate(ink, low)
+
+    page.set_viewport_size({"width": 915, "height": 412})
+    settle()
+    assert pad()["height"] < low[1]
+    dot(800, 100)  # drawn where only the landscape pad reaches
+    page.set_viewport_size({"width": 412, "height": 915})
+    settle()
+    assert page.evaluate(ink, right) and page.evaluate(ink, low)
+    dot(200, 400)  # the pad still draws where it's touched
+
+    # Clear wipes all of it, including what's out of sight.
+    page.click("#kanji-toggle")
+    settle()
+    page.click("#kanji-clear")
+    page.click("#kanji-toggle")
+    settle()
+    page.set_viewport_size({"width": 915, "height": 412})
+    settle()
+    assert not page.evaluate("""() => { const c = document.getElementById('kanji-canvas');
+      return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.some((v, i) => i % 4 === 3 && v > 0); }""")

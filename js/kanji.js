@@ -92,30 +92,41 @@ export function initKanji(doc, { lookUp }) {
 
 function initPad(canvas) {
   const ctx = canvas.getContext('2d');
-  let dpr = 1, rect = null;
+  const pad = canvas.parentElement;
+  // The canvas is a sheet of paper as big as the pad has ever been (w × h CSS
+  // pixels), with the pad a window on to its top left. It grows with the pad
+  // but never shrinks, so what's drawn where the pad no longer reaches (the
+  // list shown again, the phone turned) is there when the pad grows back.
+  let dpr = 1, w = 0, h = 0, rect = null;
 
   function resize() {
-    const r = canvas.getBoundingClientRect();
+    const r = pad.getBoundingClientRect();
     if (!r.width || !r.height) return; // page hidden
-    // Keep what's drawn if the area changes size (e.g. keyboard, rotation).
+    const newDpr = window.devicePixelRatio || 1;
+    if (r.width <= w && r.height <= h && newDpr === dpr) return;
+    // Setting a canvas's size wipes it, so what's drawn is copied across.
     let old = null;
-    if (canvas.width) {
+    if (w) {
       old = document.createElement('canvas');
       old.width = canvas.width;
       old.height = canvas.height;
       old.getContext('2d').drawImage(canvas, 0, 0);
     }
     const oldDpr = dpr;
-    dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(r.width * dpr);
-    canvas.height = Math.round(r.height * dpr);
+    dpr = newDpr;
+    w = Math.max(w, r.width);
+    h = Math.max(h, r.height);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
     if (old) ctx.drawImage(old, 0, 0, (old.width / oldDpr) * dpr, (old.height / oldDpr) * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.strokeStyle = ctx.fillStyle = '#000';
   }
-  new ResizeObserver(resize).observe(canvas);
+  new ResizeObserver(resize).observe(pad);
 
   let active = null, last = null, lastMid = null;
   const pos = (e) => ({ x: e.clientX - rect.left, y: e.clientY - rect.top });
